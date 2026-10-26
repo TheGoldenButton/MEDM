@@ -25,7 +25,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#e9e9e7;font-family:sy
 <canvas id="c"></canvas>
 <button id="cog" title="Settings" aria-label="Settings">⚙️</button>
 <button id="help" title="Tips" aria-label="Tips">?</button>
-<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Hold the <b>index trigger</b> on either controller (desktop: hold <b>L</b>) for the emoji wheel; it opens in that hand. The golden ball rests in the centre. Push the <b>thumbstick of the hand holding the wheel</b> toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Or point your <i>other</i> controller at the ball, hold its trigger (desktop: mouse button) and drag it there, then release. Let go anywhere else — or slide off first — and it returns to the centre. The <b>other controller's thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Release the trigger to send above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>). Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Space</b> jumps (desktop).<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
+<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Hold the <b>index trigger</b> on either controller (desktop: hold <b>L</b>) for the emoji wheel; it opens in that hand. The golden ball rests in the centre. Push the <b>thumbstick of the hand holding the wheel</b> toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Or point your <i>other</i> controller at the ball, hold its trigger (desktop: mouse button) and drag it there, then release. Let go anywhere else — or slide off first — and it returns to the centre. The <b>other controller's thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Release the trigger to send above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>). Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Right thumbstick</b> left/right turns you (snap turn, while the wheel is closed). <b>Space</b> jumps (desktop).<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
 <button id="vrBtn">Enter VR</button>
 <div id="err"></div>
 <div id="modal"><div class="card"><h2 style="margin:0">Settings — Meta / Muse APIs</h2>
@@ -173,7 +173,7 @@ function makeHuman(){
  /* torso in avatar-local coords (avatar forward = -Z): pelvis -> waist -> chest -> shoulders */
  const torso=lathe([[.001,.86],[.125,.88],[.148,.96],[.138,1.02],[.112,1.10],[.118,1.20],[.152,1.30],[.162,1.38],[.138,1.46],[.055,1.50],[.001,1.51]],shirt);
  const pelvis=lathe([[.001,.84],[.11,.86],[.148,.94],[.142,1.01],[.001,1.03]],pants);
- const neck=add(new THREE.Mesh(new THREE.CylinderGeometry(.042,.05,.14,16),skin));neck.position.y=1.53;
+ const neck=add(new THREE.Mesh(new THREE.CylinderGeometry(.042,.05,1,16),skin)); /* unit-height: stretched from neck base to skull each frame */
  /* head group (positioned at y=1.62, yawed with the body each frame) */
  const head=new THREE.Group();g.add(head);
  const skull=new THREE.Mesh(new THREE.SphereGeometry(.108,28,22),skin);skull.scale.set(.94,1.18,.98);skull.castShadow=true;head.add(skull);
@@ -187,7 +187,7 @@ function makeHuman(){
  }
  const mouth=new THREE.Mesh(new THREE.BoxGeometry(.034,.006,.006),lipMat);mouth.position.set(0,-.062,-.096);head.add(mouth);
  /* hands (flattened, elongated) and shoes (rounded box, toe forward -Z) */
- const mkHand=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),skin));m.scale.set(.85,1.3,.5);return m};
+ const mkHand=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),skin));m.scale.set(.9,.5,1.35);return m}; /* palm lies along the controller's forward (-Z) axis */
  const mkShoe=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(1,18,12),shoeMat));m.scale.set(.046,.027,.12);return m};
  const parts={
   torso,pelvis,neck,head,
@@ -196,7 +196,7 @@ function makeHuman(){
   thighL:limbMesh(.058,.082,pants),shinL:limbMesh(.042,.056,pants),thighR:limbMesh(.058,.082,pants),shinR:limbMesh(.042,.056,pants),
   legL:limbMesh(.001,.001,pants),legR:limbMesh(.001,.001,pants), /* legacy, hidden */
   jShL:joint(.066,shirt),jShR:joint(.066,shirt),jElL:joint(.04,skin),jElR:joint(.04,skin),
-  jKnL:joint(.055,pants),jKnR:joint(.055,pants),jHaL:mkHand(),jHaR:mkHand(),
+  jKnL:joint(.055,pants),jKnR:joint(.055,pants),jHaL:mkHand(),jHaR:mkHand(),jNk:joint(.05,skin),jWrL:joint(.031,skin),jWrR:joint(.031,skin),
   footL:mkShoe(),footR:mkShoe()};
  parts.body.visible=false;parts.clav.visible=false;parts.legL.visible=false;parts.legR.visible=false;
  g.userData.parts=parts;return g}
@@ -211,7 +211,7 @@ const ctrlHand={left:ctrlL,right:ctrlR};
  if(cs[0].userData.h==='right'||cs[1].userData.h==='left'){ctrlHand.left=cs[1];ctrlHand.right=cs[0]}
  else if(cs[0].userData.h==='left'||cs[1].userData.h==='right'){ctrlHand.left=cs[0];ctrlHand.right=cs[1]}}))}
 const handL=renderer.xr.getHand(0),handR=renderer.xr.getHand(1);rig.add(handL,handR);
-for(const c of[ctrlL,ctrlR]){const ray=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.7,6),new THREE.MeshBasicMaterial({color:0xffc400}));ray.position.z=-.35;ray.rotation.x=Math.PI/2;c.add(ray)}
+for(const c of[ctrlL,ctrlR]){const ray=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.7,6),new THREE.MeshBasicMaterial({color:0xffc400}));ray.position.z=-.35;ray.rotation.x=Math.PI/2;c.add(ray);c.userData.ray=ray}
 function sourceFor(handedness){let found={pad:null,trigger:false,squeeze:false,aBtn:false,stick:[0,0],src:null};
  for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}}return found}
 /* controller rumble: tries the standard hapticActuators API, then vibrationActuator */
@@ -306,7 +306,7 @@ function uiButton(label,x){const cv=document.createElement('canvas');cv.width=cv
 uiButton('⚙️',-.3);uiButton('?',.3);
 const helpPanel=textPanel(1.0,.68,1000,680,2),cogPanel=textPanel(1.0,.68,1000,680,2);
 for(const p of[helpPanel,cogPanel]){p.visible=false;p.position.set(0,.02,-.95);p.renderOrder=998;p.material.depthTest=false;ui.add(p)}
-helpPanel.userData.draw('? Tips','Index trigger on either controller = emoji wheel. Push the thumbstick of that hand toward an emoji on the rim and let go to pick (or grab the ball with your other pointer). Other thumbstick left/right = pages. Index + grip together = voice: speak, let go to send, wave your free hand through the box to cancel. Point at ? or ⚙️ and pull the trigger to close this.');
+helpPanel.userData.draw('? Tips','Index trigger on either controller = emoji wheel. Push the thumbstick of that hand toward an emoji on the rim and let go to pick (or grab the ball with your other pointer). Other thumbstick left/right = pages. Right thumbstick (wheel closed) = turn. Index + grip together = voice: speak, let go to send, wave your free hand through the box to cancel. Point at ? or ⚙️ and pull the trigger to close this.');
 let panelOpen=null;
 function drawCog(){cogPanel.userData.draw('⚙️ Settings','Meta API key: '+(settings.key?'set ✓':'NOT SET ✗ — voice is off')+'. Speech goes to Muse Voice Transcribe, the text goes to Muse Spark ('+settings.model+'). VR has no keyboard, so change the key or endpoints in the MANUAL CONFIG block at the bottom of this file, or with ⚙️ on the flat page. Point at ⚙️ and pull the trigger to close this.')}
 function setPanel(name){panelOpen=panelOpen===name?null:name;helpPanel.visible=panelOpen==='help';cogPanel.visible=panelOpen==='cog';if(panelOpen==='cog')drawCog()}
@@ -428,7 +428,7 @@ addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=
  mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1))});
 let wheelOpen=false,wheelHand=null,voiceHand=null,wasTrigger=false,stickDir=0,stickRep=0,jumpV=0,wasGrab=false,armedPeg=null,ballHeld=false,viaStick=false,armedMem=null,armedMemT=0,hapHand='right',hapAcc=0,prevSnapPeg=null,wasArmedPeg=false;
 const holdOff=new THREE.Vector2(),GRAB_R=.08;
-const OUTER=.30; /* the ball must be out on the rim (the outer pegs) before anything can be picked */
+const OUTER=.15; /* the ball must be out on the rim (the outer pegs) before anything can be picked */
 const prevH={left:{trigger:false,squeeze:false},right:{trigger:false,squeeze:false}};
 function openWheel(h){if(wheelOpen)return;wheelOpen=true;wheelHand=h||'desktop';wheel.visible=true;lockedEmoji=null;dwell=0;ballHeld=false;viaStick=false;ballPos.set(0,0);ballTarget.set(0,0);setStatus('Wheel open — page: '+TABS[tabIndex].name+'. Push your thumbstick toward an emoji and let go to pick it (or grab the ball with your other controller\'s pointer + trigger). The other thumbstick left/right flips pages.')}
 function cancelWheel(){wheelOpen=false;wheelHand=null;wheel.visible=false;sequence=[];renderSeqStrip()}
@@ -450,6 +450,22 @@ let avSc=1,headTopY=1.8;
 const vel=new THREE.Vector3();let walkPhase=0,bodyYaw=0;const smL=new THREE.Vector3(-.22,.8,-.03),smR=new THREE.Vector3(.22,.8,-.03);
 /* two-bone arm IK: shoulder -> elbow -> hand, elbow bends toward a 'pole' direction (down / outward / back) */
 const ARM1=.33,ARM2=.33,LEG1=.46,LEG2=.46;
+const AV_EYE=1.68; /* eye height of the avatar model, so its head sits exactly where the headset is */
+const smQL=new THREE.Quaternion(),smQR=new THREE.Quaternion(),_handDown=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-1.35);
+/* right-thumbstick turning */
+const TURN_SNAP=true,SNAP_DEG=30,SMOOTH_DEG=110;let turnLatch=false;
+const _Y=new THREE.Vector3(0,1,0);
+function turnRig(a){const p=worldPos(camera,new THREE.Vector3());rig.position.sub(p).applyAxisAngle(_Y,a).add(p);rig.rotation.y+=a;rig.updateMatrixWorld(true)}
+/* in-VR top buttons: ray -> plane of the buttons (generous hit radius) */
+const UI_Z=-.9,UI_HIT=.1,uiConsumed={left:false,right:false},uiPrev={left:null,right:null},panelHit={userData:{btn:'panel'}};
+const _uo=new THREE.Vector3(),_ud=new THREE.Vector3(),_uq=new THREE.Quaternion(),_uqi=new THREE.Quaternion();
+function uiPick(c){c.getWorldPosition(_uo);c.getWorldQuaternion(_uq);_ud.set(0,0,-1).applyQuaternion(_uq);
+ ui.worldToLocal(_uo);ui.getWorldQuaternion(_uqi).invert();_ud.applyQuaternion(_uqi);
+ if(_ud.z>=-.02)return null;const t=(UI_Z-_uo.z)/_ud.z;if(t<0)return null;
+ const x=_uo.x+_ud.x*t,y=_uo.y+_ud.y*t;let best=null,bd=UI_HIT;
+ for(const b of uiBtns){const d=Math.hypot(x-b.position.x,y-b.position.y);if(d<bd){bd=d;best=b}}
+ if(!best&&panelOpen&&Math.abs(x)<.52&&Math.abs(y-.02)<.36)return panelHit;
+ return best}
 function solveArm(S,H,pole,L1=ARM1,L2=ARM2){
  const v=H.clone().sub(S);let d=v.length();const dir=d>1e-5?v.divideScalar(d):new THREE.Vector3(0,-1,0);
  d=THREE.MathUtils.clamp(d,.08,(L1+L2)*.995);
@@ -472,12 +488,17 @@ function animate(){renderer.setAnimationLoop(()=>{
   if(Math.abs(sx)>.12||Math.abs(sz)>.12){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();const right=new THREE.Vector3().crossVectors(fwd,new THREE.Vector3(0,1,0));
    rig.position.addScaledVector(fwd,-sz*2.2*dt).addScaledVector(right,sx*2.2*dt);
    rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
+ /* right thumbstick = turn (snap turn by default). Off while the wheel is open, since the sticks drive the wheel then. */
+ if(inXR&&!wheelOpen){const tx=R.stick[0];
+  if(TURN_SNAP){if(Math.abs(tx)>.65){if(!turnLatch){turnLatch=true;turnRig(-Math.sign(tx)*SNAP_DEG*Math.PI/180)}}else if(Math.abs(tx)<.35)turnLatch=false}
+  else if(Math.abs(tx)>.15)turnRig(-tx*SMOOTH_DEG*Math.PI/180*dt)}
+ else turnLatch=true;
  /* jump (space bar) */
  if(jumpV!==0||rig.position.y>0){jumpV-=9.8*dt;rig.position.y+=jumpV*dt;if(rig.position.y<=0){rig.position.y=0;jumpV=0}}
  /* scale the avatar to your real eye height (seated / short / tall) so its head — and the emoji stacked above it — sit where your head really is */
- {const eyeY=camera.position.y,tgt=(inXR&&eyeY>.9)?THREE.MathUtils.clamp(eyeY/1.6,.6,1.35):1;avSc+=(tgt-avSc)*Math.min(1,dt*3);avatar.scale.setScalar(avSc);headTopY=rig.position.y+1.77*avSc}
+ {const eyeY=camera.position.y,tgt=(eyeY>.9)?THREE.MathUtils.clamp(eyeY/AV_EYE,.6,1.4):1;avSc+=(tgt-avSc)*Math.min(1,dt*3);avatar.scale.setScalar(avSc);headTopY=rig.position.y+eyeY+.17}
  /* avatar: follows head, walks (leg/arm swing), left hand follows your left controller (or the desktop hand holding the wheel) */
- {worldPos(camera,tmpV);const prev=avatar.position.clone();avatar.position.set(tmpV.x,rig.position.y,tmpV.z);avatar.rotation.y=0;
+ {worldPos(camera,tmpV);const prev=avatar.position.clone();avatar.position.set(tmpV.x+Math.sin(bodyYaw)*.09*avSc,rig.position.y,tmpV.z+Math.cos(bodyYaw)*.09*avSc);avatar.rotation.y=0; /* body stands under the head centre, which is ~9cm behind the eyes */
   if(dt>1e-4){const dv=avatar.position.clone().sub(prev);dv.y=0;vel.lerp(dv.divideScalar(dt),.2)}
   const speed=vel.length(),amp=Math.min(1,speed/1.2);walkPhase+=speed*dt*4.2;
   const wd=speed>.05?vel.clone().setY(0).normalize():new THREE.Vector3(0,0,1);
@@ -491,35 +512,49 @@ function animate(){renderer.setAnimationLoop(()=>{
   const shL=new THREE.Vector3(-.195,1.42,0).applyQuaternion(bodyQ),shR=new THREE.Vector3(.195,1.42,0).applyQuaternion(bodyQ);
   const hipL=new THREE.Vector3(-.10,.95,0).applyQuaternion(bodyQ),hipR=new THREE.Vector3(.10,.95,0).applyQuaternion(bodyQ);
   /* arms only ever follow your hands: controllers in VR (relaxed at-the-sides pose if a controller isn't tracked), and a still rest pose on desktop. No swing/bob of their own. */
+  const camQ=camera.getWorldQuaternion(new THREE.Quaternion());
+  const restL=new THREE.Vector3(-.25,.8,-.03).applyQuaternion(bodyQ),restR=new THREE.Vector3(.25,.8,-.03).applyQuaternion(bodyQ),restQ=bodyQ.clone().multiply(_handDown);
   let handLv,handRv;
-  const restL=new THREE.Vector3(-.25,.8,-.03).applyQuaternion(bodyQ),restR=new THREE.Vector3(.25,.8,-.03).applyQuaternion(bodyQ);
-  if(inXR){handLv=L.src?worldPos(ctrlHand.left,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restL;handRv=R.src?worldPos(ctrlHand.right,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restR;smL.copy(handLv);smR.copy(handRv)}
-  else{smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(restR,.2);handLv=smL.clone();handRv=smR.clone()}
-  const armL=solveArm(shL,handLv,new THREE.Vector3(-.5,-.4,.8).applyQuaternion(bodyQ));
-  const armR=solveArm(shR,handRv,new THREE.Vector3(.5,-.4,.8).applyQuaternion(bodyQ));
+  if(inXR){handLv=L.src?worldPos(ctrlHand.left,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restL;handRv=R.src?worldPos(ctrlHand.right,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restR;
+   smL.copy(handLv);smR.copy(handRv);
+   smQL.copy(L.src?ctrlHand.left.getWorldQuaternion(new THREE.Quaternion()):restQ);smQR.copy(R.src?ctrlHand.right.getWorldQuaternion(new THREE.Quaternion()):restQ)}
+  else{smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(restR,.2);handLv=smL.clone();handRv=smR.clone();
+   const k=Math.min(1,dt*10);smQL.slerp(wheelOpen?camQ:restQ,k);smQR.slerp(restQ,k)}
+  /* the wrist joint sits just behind the palm along the controller's axis; the forearm ends there, the hand continues forward from it */
+  const wrL=handLv.clone().add(new THREE.Vector3(0,0,.07).applyQuaternion(smQL)),wrR=handRv.clone().add(new THREE.Vector3(0,0,.07).applyQuaternion(smQR));
+  const armL=solveArm(shL,wrL,new THREE.Vector3(-.5,-.4,.8).applyQuaternion(bodyQ));
+  const armR=solveArm(shR,wrR,new THREE.Vector3(.5,-.4,.8).applyQuaternion(bodyQ));
   /* two-bone legs: knee pole points forward (-Z in body space) so knees bend the right way */
   const fwdPole=new THREE.Vector3(0,.15,-1).applyQuaternion(bodyQ);
   const legL=solveArm(hipL,footL.clone().setY(Math.max(footL.y,.04)),fwdPole,LEG1,LEG2);
   const legR=solveArm(hipR,footR.clone().setY(Math.max(footR.y,.04)),fwdPole,LEG1,LEG2);
   /* volumetric torso / pelvis / neck / head yaw with the body (geometry is in avatar-local coords) */
   P.torso.quaternion.copy(bodyQ);P.pelvis.quaternion.copy(bodyQ);
-  P.neck.position.set(0,1.53,0).applyQuaternion(bodyQ);P.neck.quaternion.copy(bodyQ);
-  P.head.position.set(0,1.64,0).applyQuaternion(bodyQ);P.head.quaternion.copy(bodyQ);
+  /* head = exactly the headset pose; the neck joint at the shoulders bends to meet it */
+  const headC=worldPos(camera,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc).sub(new THREE.Vector3(0,.022,-.09).applyQuaternion(camQ));
+  const nBase=new THREE.Vector3(0,1.48,0),nTop=headC.clone().add(new THREE.Vector3(0,-.085,.015).applyQuaternion(camQ));
+  P.head.position.copy(headC);P.head.quaternion.copy(camQ);
+  setLimb(P.neck,nBase,nTop);P.jNk.position.copy(nBase);
   setLimb(P.upL,shL,armL.el);setLimb(P.foreL,armL.el,armL.ha);setLimb(P.upR,shR,armR.el);setLimb(P.foreR,armR.el,armR.ha);
-  P.jShL.position.copy(shL);P.jShR.position.copy(shR);P.jElL.position.copy(armL.el);P.jElR.position.copy(armR.el);P.jHaL.position.copy(armL.ha);P.jHaR.position.copy(armR.ha);
-  P.jHaL.quaternion.copy(bodyQ);P.jHaR.quaternion.copy(bodyQ);
+  P.jShL.position.copy(shL);P.jShR.position.copy(shR);P.jElL.position.copy(armL.el);P.jElR.position.copy(armR.el);P.jWrL.position.copy(armL.ha);P.jWrR.position.copy(armR.ha);
+  const hOff=new THREE.Vector3(0,0,-.062);
+  P.jHaL.position.copy(armL.ha).add(hOff.clone().applyQuaternion(smQL));P.jHaL.quaternion.copy(smQL);
+  P.jHaR.position.copy(armR.ha).add(hOff.clone().applyQuaternion(smQR));P.jHaR.quaternion.copy(smQR);
   setLimb(P.thighL,hipL,legL.el);setLimb(P.shinL,legL.el,legL.ha);setLimb(P.thighR,hipR,legR.el);setLimb(P.shinR,legR.el,legR.ha);
   P.jKnL.position.copy(legL.el);P.jKnR.position.copy(legR.el);
   /* shoes sit on the solved ankle, toe pointing body-forward */
   const fwdOff=new THREE.Vector3(0,0,-.045).applyQuaternion(bodyQ);
   P.footL.position.copy(legL.ha).add(fwdOff);P.footL.position.y=Math.max(legL.ha.y-.01,.026);P.footL.quaternion.copy(bodyQ);
   P.footR.position.copy(legR.ha).add(fwdOff);P.footR.position.y=Math.max(legR.ha.y-.01,.026);P.footR.quaternion.copy(bodyQ)}
- /* in-VR top buttons: hover highlight + click (a trigger pull on a button never opens the wheel) */
+ /* in-VR top buttons: a trigger pull while pointing at one presses it and is swallowed, so it can never open the wheel */
  const uiHover={left:null,right:null};ui.visible=inXR;
  if(inXR){ui.updateWorldMatrix(true,true);
-  for(const h of['left','right']){const c=ctrlHand[h];if(!c)continue;c.getWorldPosition(uiRay.ray.origin);uiRay.ray.direction.set(0,0,-1).applyQuaternion(c.getWorldQuaternion(uiQ));
-   const hit=uiRay.intersectObjects(uiBtns,false)[0];uiHover[h]=hit?hit.object:null;
-   const S=h==='left'?L:R;if(hit&&S.trigger&&!prevH[h].trigger){setPanel(hit.object.userData.btn==='⚙️'?'cog':'help');haptic(h,.7,40)}}
+  for(const h of['left','right']){const c=ctrlHand[h];if(!c)continue;const S=h==='left'?L:R,Pv=prevH[h];
+   const hit=(wheelOpen||listening)?null:uiPick(c);uiHover[h]=hit;
+   if(S.trigger&&!Pv.trigger&&hit){uiConsumed[h]=true;setPanel(hit.userData.btn==='panel'?panelOpen:(hit.userData.btn==='⚙️'?'cog':'help'));haptic(h,.7,40)}
+   if(!S.trigger)uiConsumed[h]=false;
+   if(hit&&hit!==uiPrev[h]&&hit.userData.btn!=='panel')haptic(h,.25,20);uiPrev[h]=hit;
+   if(c.userData.ray)c.userData.ray.material.color.setHex(hit?0x34e08a:0xffc400)}
   for(const b of uiBtns){const hov=uiHover.left===b||uiHover.right===b;b.scale.setScalar(b.scale.x+((hov?1.25:1)-b.scale.x)*.3)}}
  /* controls. Index trigger on EITHER controller = emoji wheel (held in that hand). Index + middle-finger (grip) trigger together = voice.
     Desktop: hold L for the wheel, hold V for voice. */
@@ -530,7 +565,7 @@ function animate(){renderer.setAnimationLoop(()=>{
    /* voice: both triggers on one hand (if the wheel is open in that hand with nothing picked yet, voice takes over) */
    if(comboRise&&!listening&&(!wheelOpen||(wheelHand===h&&!sequence.length))){if(wheelOpen)cancelWheel();startListening();if(listening)voiceHand=h}
    /* wheel: index trigger alone */
-   else if(S.trigger&&!P.trigger&&!S.squeeze&&!wheelOpen&&!listening&&!uiHover[h])openWheel(h);
+   else if(S.trigger&&!P.trigger&&!S.squeeze&&!wheelOpen&&!listening&&!uiHover[h]&&!uiConsumed[h])openWheel(h);
    if(wheelOpen&&wheelHand===h&&!S.trigger)closeWheelAndSend();
    if(listening&&voiceHand===h&&!comboNow){releaseVoice();voiceHand=null}} /* letting go of either trigger sends */
  }else{const trig=!!keys.KeyL;if(trig&&!wasTrigger)openWheel('desktop');if(!trig&&wasTrigger)closeWheelAndSend();wasTrigger=trig}
@@ -570,13 +605,14 @@ function animate(){renderer.setAnimationLoop(()=>{
   else ballTarget.set(0,0);
   if(ballTarget.length()>WHEEL_R)ballTarget.setLength(WHEEL_R);
   ballPos.lerp(ballTarget,ballHeld?.45:.25);let best=null;
-  if(ballHeld&&ballTarget.length()>OUTER){const tp=ballTarget.clone().setLength(RING_R);let bd=1e9;
-   for(const m of emojiMeshes){const p=m.userData.home;const d=Math.hypot(tp.x-p.x,tp.y-p.y);if(d<bd){bd=d;best=m}}}
+  if(ballHeld&&ballTarget.length()>(snapped?OUTER*.75:OUTER)){const tp=ballTarget.clone().setLength(RING_R);let bd=1e9,cd=1e9;
+   for(const m of emojiMeshes){const p=m.userData.home;const d=Math.hypot(tp.x-p.x,tp.y-p.y);if(d<bd){bd=d;best=m}if(m===snapped)cd=d}
+   if(snapped&&best!==snapped&&bd>cd*.8)best=snapped} /* sticky: only jump to a neighbour once clearly closer to it */
   if(best!==snapped)dwell=0;
   snapped=best;
-  if(snapped){ballPos.lerp(new THREE.Vector2(snapped.userData.home.x,snapped.userData.home.y),.55);dwell+=dt}else dwell=0;
+  if(snapped){ballPos.lerp(new THREE.Vector2(snapped.userData.home.x,snapped.userData.home.y),.7);dwell+=dt}else dwell=0;
   if(ballHeld){const holding=viaStick?stickOn:grab;
-   if(holding){armedPeg=(snapped&&dwell>=.1)?snapped:null;if(armedPeg){armedMem=armedPeg;armedMemT=now}}
+   if(holding){armedPeg=(snapped&&dwell>=.05)?snapped:null;if(armedPeg){armedMem=armedPeg;armedMemT=now}}
    else{ /* released. A thumbstick springs back through the middle in a few frames, so it counts if it was on a peg a moment ago */
     const peg=viaStick?((armedMem&&now-armedMemT<180)?armedMem:null):armedPeg;
     if(peg)selectEmoji(peg.userData.emoji);ballHeld=false;viaStick=false;armedPeg=null;armedMem=null}}
