@@ -124,25 +124,28 @@ const pmrem=new THREE.PMREMGenerator(renderer);
  for(const x of[-2.5,2.5]){const p=new THREE.Mesh(new THREE.BoxGeometry(2,.06,.7),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.4}));p.position.set(x,3.95,0);scene.add(p)}
 }
 /* mirror (real reflection) + frame */
-const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1024,textureHeight:1024,color:0xcfd8dc});
+const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1536,textureHeight:1536,color:0xcfd8dc});
 mirror.position.set(0,1.55,-4.94);scene.add(mirror);
 /* flag the mirror's own render pass so emoji billboards can face (and un-flip for) the reflection camera */
 let inMirror=false;
 /* the wheel is also turned to face the reflection camera (and pre-flipped) so it reads properly in the mirror */
 {const _mob=mirror.onBeforeRender;mirror.onBeforeRender=function(...a){
-  inMirror=true;avatar.visible=true;let flipped=false,sq,ssx;
+  inMirror=true;avatar.visible=true;const _uiv=ui.visible;ui.visible=false;let flipped=false,sq,ssx;
   if(wheel.visible){flipped=true;sq=wheel.quaternion.clone();ssx=wheel.scale.x;
    const vp=new THREE.Vector3().setFromMatrixPosition(a[2].matrixWorld);vp.z=2*mirror.position.z-vp.z;
    wheel.lookAt(vp);wheel.scale.x=-ssx;wheel.updateMatrixWorld(true)}
-  try{_mob.apply(this,a)}finally{inMirror=false;avatar.visible=false;if(flipped){wheel.quaternion.copy(sq);wheel.scale.x=ssx;wheel.updateMatrixWorld(true)}}}}
+  try{_mob.apply(this,a)}finally{inMirror=false;avatar.visible=false;ui.visible=_uiv;if(flipped){wheel.quaternion.copy(sq);wheel.scale.x=ssx;wheel.updateMatrixWorld(true)}}}}
 {const f=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.8,.08),new THREE.MeshStandardMaterial({color:0x222222,roughness:.4,metalness:.6}));f.position.set(0,1.55,-4.99);scene.add(f);}
 
 /* ============ HELPERS ============ */
+const MAXA=renderer.capabilities.getMaxAnisotropy();
 const emojiTexCache=new Map();
-function emojiTexture(e){if(emojiTexCache.has(e))return emojiTexCache.get(e);const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d');g.font='96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,64,70);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;emojiTexCache.set(e,t);return t}
-function emojiPlane(e,s=.06){const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s),new THREE.MeshBasicMaterial({map:emojiTexture(e),transparent:true,alphaTest:.05,side:THREE.DoubleSide}));m.userData.emoji=e;return m}
+/* emoji are drawn at 256px (wheel) or 512px (the big ones over your head), mip-mapped + anisotropic, so they stay crisp in a headset */
+function emojiTexture(e,res=256){const key=e+'@'+res;if(emojiTexCache.has(key))return emojiTexCache.get(key);const cv=document.createElement('canvas');cv.width=cv.height=res;const g=cv.getContext('2d');g.font=(res*.75)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,res/2,res*.547);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=MAXA;emojiTexCache.set(key,t);return t}
+function emojiPlane(e,s=.06,res=256){const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s),new THREE.MeshBasicMaterial({map:emojiTexture(e,res),transparent:true,alphaTest:.05,side:THREE.DoubleSide}));m.userData.emoji=e;return m}
 function makeLabel(text,w=.6,h=.15){const cv=document.createElement('canvas');cv.width=512;cv.height=128;const g=cv.getContext('2d');g.fillStyle='#111';g.font='700 84px system-ui';g.textAlign='center';g.fillText(text,256,88);const t=new THREE.CanvasTexture(cv);const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.DoubleSide}));return m}
-function textPanel(w,h){const cv=document.createElement('canvas');cv.width=1024;cv.height=384;const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));m.userData.draw=(title,body)=>{const g=cv.getContext('2d');g.clearRect(0,0,1024,384);g.fillStyle='rgba(255,255,255,.96)';g.beginPath();g.roundRect(0,0,1024,384,36);g.fill();g.strokeStyle='#111';g.lineWidth=6;g.stroke();g.fillStyle='#111';g.font='700 44px system-ui';g.fillText(title,36,62);g.font='40px system-ui';const words=(body||'').split(/\s+/);let line='',y=130;for(const wd of words){if(g.measureText(line+wd).width>940){g.fillText(line,36,y);y+=52;line=''}line+=wd+' ';if(y>340)break}g.fillText(line,36,y);tex.needsUpdate=true};return m}
+function textPanel(w,h,lw=1024,lh=384,k=2){const cv=document.createElement('canvas');cv.width=lw*k;cv.height=lh*k;cv.getContext('2d').scale(k,k);const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=MAXA;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));
+ m.userData.draw=(title,body)=>{const g=cv.getContext('2d');g.clearRect(0,0,lw,lh);g.fillStyle='rgba(255,255,255,.96)';g.beginPath();g.roundRect(0,0,lw,lh,36);g.fill();g.strokeStyle='#111';g.lineWidth=6;g.stroke();g.fillStyle='#111';g.font='700 44px system-ui';g.fillText(title,36,62);g.font='40px system-ui';const words=(body||'').split(/\s+/);let line='',y=130;for(const wd of words){if(g.measureText(line+wd).width>lw-84){g.fillText(line,36,y);y+=52;line=''}line+=wd+' ';if(y>lh-44)break}g.fillText(line,36,y);tex.needsUpdate=true};return m}
 function limb(a,b,r,mat){const len=a.distanceTo(b);const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,Math.max(len,.01),6),mat);m.position.copy(a).lerp(b,.5);m.lookAt(b);m.rotateX(Math.PI/2);return m}
 const _up=new THREE.Vector3(0,1,0),_dir=new THREE.Vector3();
 function setLimb(m,a,b){const len=Math.max(a.distanceTo(b),.01);m.scale.set(1,len,1);m.position.copy(a).lerp(b,.5);_dir.copy(b).sub(a).normalize();m.quaternion.setFromUnitVectors(_up,_dir)}
@@ -211,13 +214,16 @@ const handL=renderer.xr.getHand(0),handR=renderer.xr.getHand(1);rig.add(handL,ha
 for(const c of[ctrlL,ctrlR]){const ray=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.7,6),new THREE.MeshBasicMaterial({color:0xffc400}));ray.position.z=-.35;ray.rotation.x=Math.PI/2;c.add(ray)}
 function sourceFor(handedness){let found={pad:null,trigger:false,squeeze:false,aBtn:false,stick:[0,0],src:null};
  for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}}return found}
+/* controller rumble: tries the standard hapticActuators API, then vibrationActuator */
+function haptic(h,val,ms){try{const gp=sourceFor(h).src?.gamepad;if(!gp)return;const a=gp.hapticActuators&&gp.hapticActuators[0];
+ if(a&&a.pulse){a.pulse(val,ms);return}if(gp.vibrationActuator&&gp.vibrationActuator.playEffect)gp.vibrationActuator.playEffect('dual-rumble',{duration:ms,strongMagnitude:val,weakMagnitude:val})}catch(_){}}
 function worldPos(obj,out){return obj.getWorldPosition(out||new THREE.Vector3())}
 
 /* ============ EMOJI WHEEL ============ */
 const wheel=new THREE.Group();wheel.visible=false;scene.add(wheel);
 const disc=new THREE.Mesh(new THREE.CircleGeometry(.38,64),new THREE.MeshStandardMaterial({color:0x14161c,transparent:true,opacity:.92,roughness:.4,side:THREE.DoubleSide}));wheel.add(disc);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(.38,.007,8,96),new THREE.MeshBasicMaterial({color:0xffd34d}));wheel.add(ring);
-function matcap(c0,c1,c2){const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d');const gr=g.createRadialGradient(46,42,4,64,64,64);gr.addColorStop(0,'#ffffff');gr.addColorStop(.16,c0);gr.addColorStop(.68,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,128,128);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t}
+function matcap(c0,c1,c2){const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d');const gr=g.createRadialGradient(92,84,8,128,128,128);gr.addColorStop(0,'#ffffff');gr.addColorStop(.16,c0);gr.addColorStop(.68,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,256,256);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t}
 const matGold=matcap('#ffe27a','#f5a800','#7a3f00'),matGreen=matcap('#d6ffe6','#2fe08a','#075c33');
 const ball=new THREE.Mesh(new THREE.SphereGeometry(.03,48,32),new THREE.MeshMatcapMaterial({matcap:matGold}));
 ball.position.z=.025;wheel.add(ball);
@@ -257,7 +263,7 @@ function renderSeqStrip(){while(seqStrip.children.length)seqStrip.remove(seqStri
 function setTab(i){tabIndex=(i+TABS.length)%TABS.length;snapped=null;lockedEmoji=null;dwell=0;armedPeg=null;buildWheel()}
 buildWheel();
 function selectEmoji(e){if(sequence.length>=MAX_EMOJI){lockedEmoji=e;dwell=0;setStatus('Max '+MAX_EMOJI+' emojis — release the trigger to send.');return}sequence.push(e);renderSeqStrip();setStatus('Selected '+e+' — keep holding left trigger, release to send.');ballPos.set(0,0);ballTarget.set(0,0);snapped=null;lockedEmoji=e;dwell=0;
- try{const s=sourceFor('right').src||sourceFor('left').src;s?.hapticActuators?.[0]?.pulse?.(.6,40)}catch(_){}}
+ haptic(hapHand,.9,60);}
 const overheadAnims=[];
 const STAGGER=480,HOLD_MS=7000,FADE_MS=1000;
 const _cp=new THREE.Vector3();
@@ -276,10 +282,10 @@ function popSequence(list){
  {let total=list.length;for(let i=overheadAnims.length-1;i>=0;i--){const o=overheadAnims[i];if(o.leaving)continue;total+=o.n;if(total>MAX_EMOJI){const el=performance.now()-o.start;o.leaving=true;o.fade=350;o.life=Math.min(o.life,el+350)}}}
  const g=new THREE.Group();scene.add(g);
  const a={g,items:[],n:list.length,start:performance.now(),yOff:0,fade:FADE_MS,leaving:false,life:(list.length-1)*STAGGER+HOLD_MS+FADE_MS};
- list.forEach((e,j)=>{const m=emojiPlane(e,.4);m.visible=false;m.userData.j=j;m.userData.a=a;m.userData.sc=.01;m.onBeforeRender=billboard;m.frustumCulled=false;g.add(m);a.items.push(m)});
+ list.forEach((e,j)=>{const m=emojiPlane(e,.4,512);m.visible=false;m.userData.j=j;m.userData.a=a;m.userData.sc=.01;m.onBeforeRender=billboard;m.frustumCulled=false;g.add(m);a.items.push(m)});
  overheadAnims.push(a)}
 /* '...' thinking indicator: three bouncing dots above your head while a message is being translated */
-const dotTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=64;const g=cv.getContext('2d');g.fillStyle='#2a2a2a';g.beginPath();g.arc(32,32,22,0,Math.PI*2);g.fill();const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t})();
+const dotTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d');g.fillStyle='#2a2a2a';g.beginPath();g.arc(64,64,44,0,Math.PI*2);g.fill();const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t})();
 const dots=new THREE.Group();dots.visible=false;scene.add(dots);
 for(let i=0;i<3;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(.1,.1),new THREE.MeshBasicMaterial({map:dotTex,transparent:true,side:THREE.DoubleSide}));m.userData.i=i;m.frustumCulled=false;
  m.onBeforeRender=function(r,sc,cam){const g=this.parent;_cp.setFromMatrixPosition(cam.matrixWorld);
@@ -289,7 +295,21 @@ for(let i=0;i<3;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(.1,.1),new T
  dots.add(m)}
 /* voice transcript panel */
 const voicePanel=textPanel(.85,.32);voicePanel.visible=false;scene.add(voicePanel);
-voicePanel.userData.draw('🎙️ Muse Voice Transcribe','Hold left trigger + A and speak…');
+voicePanel.userData.draw('🎙️ Muse Voice Transcribe','Hold both triggers and speak…');
+/* ---- in-VR ⚙️ and ? buttons: pinned to the top of your view, picked with a controller ray + trigger ---- */
+const ui=new THREE.Group();ui.visible=false;camera.add(ui);
+const uiBtns=[],uiRay=new THREE.Raycaster(),uiQ=new THREE.Quaternion();uiRay.far=4;
+function uiButton(label,x){const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d');g.fillStyle='#fff';g.beginPath();g.arc(128,128,120,0,Math.PI*2);g.fill();g.strokeStyle='#888';g.lineWidth=8;g.stroke();
+ g.fillStyle='#111';g.font='700 130px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(label,128,142);
+ const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=MAXA;
+ const m=new THREE.Mesh(new THREE.CircleGeometry(.055,48),new THREE.MeshBasicMaterial({map:t,transparent:true,depthTest:false}));m.position.set(x,.33,-.9);m.renderOrder=999;m.userData.btn=label;ui.add(m);uiBtns.push(m);return m}
+uiButton('⚙️',-.3);uiButton('?',.3);
+const helpPanel=textPanel(1.0,.68,1000,680,2),cogPanel=textPanel(1.0,.68,1000,680,2);
+for(const p of[helpPanel,cogPanel]){p.visible=false;p.position.set(0,.02,-.95);p.renderOrder=998;p.material.depthTest=false;ui.add(p)}
+helpPanel.userData.draw('? Tips','Index trigger on either controller = emoji wheel. Push the thumbstick of that hand toward an emoji on the rim and let go to pick (or grab the ball with your other pointer). Other thumbstick left/right = pages. Index + grip together = voice: speak, let go to send, wave your free hand through the box to cancel. Point at ? or ⚙️ and pull the trigger to close this.');
+let panelOpen=null;
+function drawCog(){cogPanel.userData.draw('⚙️ Settings','Meta API key: '+(settings.key?'set ✓':'NOT SET ✗ — voice is off')+'. Speech goes to Muse Voice Transcribe, the text goes to Muse Spark ('+settings.model+'). VR has no keyboard, so change the key or endpoints in the MANUAL CONFIG block at the bottom of this file, or with ⚙️ on the flat page. Point at ⚙️ and pull the trigger to close this.')}
+function setPanel(name){panelOpen=panelOpen===name?null:name;helpPanel.visible=panelOpen==='help';cogPanel.visible=panelOpen==='cog';if(panelOpen==='cog')drawCog()}
 
 /* ============ VOICE: Muse Voice Transcribe -> Muse Spark ============ */
 let recog=null,listening=false,transcript='',silenceTimer=null,mediaRec=null,mediaChunks=[];
@@ -406,7 +426,7 @@ canvas.addEventListener('pointerdown',e=>{if(wheelOpen&&wheelHand==='desktop'){m
 addEventListener('pointerup',()=>{dragging=false;mouseDown=false});
 addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=(e.clientX-lx)*.003;pitch=THREE.MathUtils.clamp(pitch-(e.clientY-ly)*.003,-1.2,1.2);lx=e.clientX;ly=e.clientY}
  mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1))});
-let wheelOpen=false,wheelHand=null,voiceHand=null,wasTrigger=false,stickDir=0,stickRep=0,jumpV=0,wasGrab=false,armedPeg=null,ballHeld=false,viaStick=false,armedMem=null,armedMemT=0;
+let wheelOpen=false,wheelHand=null,voiceHand=null,wasTrigger=false,stickDir=0,stickRep=0,jumpV=0,wasGrab=false,armedPeg=null,ballHeld=false,viaStick=false,armedMem=null,armedMemT=0,hapHand='right',hapAcc=0,prevSnapPeg=null,wasArmedPeg=false;
 const holdOff=new THREE.Vector2(),GRAB_R=.08;
 const OUTER=.30; /* the ball must be out on the rim (the outer pegs) before anything can be picked */
 const prevH={left:{trigger:false,squeeze:false},right:{trigger:false,squeeze:false}};
@@ -419,12 +439,14 @@ function closeWheelAndSend(){if(!wheelOpen)return;wheelOpen=false;wheelHand=null
 $('vrBtn').onclick=async()=>{if(!navigator.xr){setStatus('WebXR not available in this browser — desktop preview still works.');return}
  try{const ok=await navigator.xr.isSessionSupported('immersive-vr');if(!ok){setStatus('Immersive VR not supported on this device/browser.');return}
   const session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});
+  renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0); /* render the headset view at 1.5x with no foveated blur */
   await renderer.xr.setSession(session);$('vrBtn').textContent='In VR — use controllers';}catch(e){setStatus('Could not start VR: '+e.message)}};
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
 /* ============ MAIN LOOP ============ */
 const clock=new THREE.Clock();const tmpV=new THREE.Vector3(),tmpV2=new THREE.Vector3(),tmpV3=new THREE.Vector3();
 const _plane=new THREE.Plane(),_hit=new THREE.Vector3();
+let avSc=1,headTopY=1.8;
 const vel=new THREE.Vector3();let walkPhase=0,bodyYaw=0;const smL=new THREE.Vector3(-.22,.8,-.03),smR=new THREE.Vector3(.22,.8,-.03);
 /* two-bone arm IK: shoulder -> elbow -> hand, elbow bends toward a 'pole' direction (down / outward / back) */
 const ARM1=.33,ARM2=.33,LEG1=.46,LEG2=.46;
@@ -452,6 +474,8 @@ function animate(){renderer.setAnimationLoop(()=>{
    rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
  /* jump (space bar) */
  if(jumpV!==0||rig.position.y>0){jumpV-=9.8*dt;rig.position.y+=jumpV*dt;if(rig.position.y<=0){rig.position.y=0;jumpV=0}}
+ /* scale the avatar to your real eye height (seated / short / tall) so its head — and the emoji stacked above it — sit where your head really is */
+ {const eyeY=camera.position.y,tgt=(inXR&&eyeY>.9)?THREE.MathUtils.clamp(eyeY/1.6,.6,1.35):1;avSc+=(tgt-avSc)*Math.min(1,dt*3);avatar.scale.setScalar(avSc);headTopY=rig.position.y+1.77*avSc}
  /* avatar: follows head, walks (leg/arm swing), left hand follows your left controller (or the desktop hand holding the wheel) */
  {worldPos(camera,tmpV);const prev=avatar.position.clone();avatar.position.set(tmpV.x,rig.position.y,tmpV.z);avatar.rotation.y=0;
   if(dt>1e-4){const dv=avatar.position.clone().sub(prev);dv.y=0;vel.lerp(dv.divideScalar(dt),.2)}
@@ -469,7 +493,7 @@ function animate(){renderer.setAnimationLoop(()=>{
   /* arms only ever follow your hands: controllers in VR (relaxed at-the-sides pose if a controller isn't tracked), and a still rest pose on desktop. No swing/bob of their own. */
   let handLv,handRv;
   const restL=new THREE.Vector3(-.25,.8,-.03).applyQuaternion(bodyQ),restR=new THREE.Vector3(.25,.8,-.03).applyQuaternion(bodyQ);
-  if(inXR){handLv=L.src?worldPos(ctrlHand.left,new THREE.Vector3()).sub(avatar.position):restL;handRv=R.src?worldPos(ctrlHand.right,new THREE.Vector3()).sub(avatar.position):restR;smL.copy(handLv);smR.copy(handRv)}
+  if(inXR){handLv=L.src?worldPos(ctrlHand.left,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restL;handRv=R.src?worldPos(ctrlHand.right,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restR;smL.copy(handLv);smR.copy(handRv)}
   else{smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(restR,.2);handLv=smL.clone();handRv=smR.clone()}
   const armL=solveArm(shL,handLv,new THREE.Vector3(-.5,-.4,.8).applyQuaternion(bodyQ));
   const armR=solveArm(shR,handRv,new THREE.Vector3(.5,-.4,.8).applyQuaternion(bodyQ));
@@ -490,6 +514,13 @@ function animate(){renderer.setAnimationLoop(()=>{
   const fwdOff=new THREE.Vector3(0,0,-.045).applyQuaternion(bodyQ);
   P.footL.position.copy(legL.ha).add(fwdOff);P.footL.position.y=Math.max(legL.ha.y-.01,.026);P.footL.quaternion.copy(bodyQ);
   P.footR.position.copy(legR.ha).add(fwdOff);P.footR.position.y=Math.max(legR.ha.y-.01,.026);P.footR.quaternion.copy(bodyQ)}
+ /* in-VR top buttons: hover highlight + click (a trigger pull on a button never opens the wheel) */
+ const uiHover={left:null,right:null};ui.visible=inXR;
+ if(inXR){ui.updateWorldMatrix(true,true);
+  for(const h of['left','right']){const c=ctrlHand[h];if(!c)continue;c.getWorldPosition(uiRay.ray.origin);uiRay.ray.direction.set(0,0,-1).applyQuaternion(c.getWorldQuaternion(uiQ));
+   const hit=uiRay.intersectObjects(uiBtns,false)[0];uiHover[h]=hit?hit.object:null;
+   const S=h==='left'?L:R;if(hit&&S.trigger&&!prevH[h].trigger){setPanel(hit.object.userData.btn==='⚙️'?'cog':'help');haptic(h,.7,40)}}
+  for(const b of uiBtns){const hov=uiHover.left===b||uiHover.right===b;b.scale.setScalar(b.scale.x+((hov?1.25:1)-b.scale.x)*.3)}}
  /* controls. Index trigger on EITHER controller = emoji wheel (held in that hand). Index + middle-finger (grip) trigger together = voice.
     Desktop: hold L for the wheel, hold V for voice. */
  if(!listening)voiceHand=null;
@@ -499,7 +530,7 @@ function animate(){renderer.setAnimationLoop(()=>{
    /* voice: both triggers on one hand (if the wheel is open in that hand with nothing picked yet, voice takes over) */
    if(comboRise&&!listening&&(!wheelOpen||(wheelHand===h&&!sequence.length))){if(wheelOpen)cancelWheel();startListening();if(listening)voiceHand=h}
    /* wheel: index trigger alone */
-   else if(S.trigger&&!P.trigger&&!S.squeeze&&!wheelOpen&&!listening)openWheel(h);
+   else if(S.trigger&&!P.trigger&&!S.squeeze&&!wheelOpen&&!listening&&!uiHover[h])openWheel(h);
    if(wheelOpen&&wheelHand===h&&!S.trigger)closeWheelAndSend();
    if(listening&&voiceHand===h&&!comboNow){releaseVoice();voiceHand=null}} /* letting go of either trigger sends */
  }else{const trig=!!keys.KeyL;if(trig&&!wasTrigger)openWheel('desktop');if(!trig&&wasTrigger)closeWheelAndSend();wasTrigger=trig}
@@ -550,6 +581,12 @@ function animate(){renderer.setAnimationLoop(()=>{
     const peg=viaStick?((armedMem&&now-armedMemT<180)?armedMem:null):armedPeg;
     if(peg)selectEmoji(peg.userData.emoji);ballHeld=false;viaStick=false;armedPeg=null;armedMem=null}}
   else armedPeg=null;
+  /* haptics while you pull the ball: a rumble that grows the further out you drag it, a tick on each new emoji peg, a firm thump when it locks on (green) */
+  if(inXR&&ballHeld){hapHand=viaStick?wheelHand:aimHand;
+   hapAcc-=dt;if(hapAcc<=0){hapAcc=.045;haptic(hapHand,.12+.4*Math.min(1,ballPos.length()/WHEEL_R),60)}
+   if(snapped&&snapped!==prevSnapPeg)haptic(hapHand,.65,30);
+   if(armedPeg&&!wasArmedPeg)haptic(hapHand,1,80)}
+  prevSnapPeg=snapped;wasArmedPeg=!!armedPeg;
   wasGrab=grab;
   for(const m of emojiMeshes)m.scale.setScalar(m===armedPeg?1.55:(m===snapped?1.25+Math.sin(t*10)*.1:1));
   ball.material.matcap=armedPeg?matGreen:matGold;ball.scale.setScalar(ballHeld?1.25:(hover?1.15:1));
@@ -559,7 +596,7 @@ function animate(){renderer.setAnimationLoop(()=>{
  /* '...' above the head while waiting on Spark; sits above the newest message so they never overlap */
  {const show=thinkingCount>0;dots.visible=show;
   if(show){const hd=worldPos(camera,tmpV);let h=0;for(let k=overheadAnims.length-1;k>=0;k--){const o=overheadAnims[k];if(!o.leaving){h=o.yOff+Math.ceil(o.n/PER_ROW)*ROW_H;break}}
-   dots.position.set(hd.x,hd.y+.62+h,hd.z)}}
+   dots.position.set(hd.x,headTopY+.36+h,hd.z)}}
  /* voice panel follows camera; hand-break check */
  if(voicePanel.visible){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);
   voicePanel.position.copy(worldPos(camera,tmpV)).addScaledVector(fwd,.95).add(new THREE.Vector3(0,.08,0));voicePanel.lookAt(worldPos(camera,tmpV2));
@@ -570,7 +607,7 @@ function animate(){renderer.setAnimationLoop(()=>{
   for(let i=overheadAnims.length-1;i>=0;i--){const a=overheadAnims[i],el=performance.now()-a.start;
    if(el>a.life){scene.remove(a.g);a.items.forEach(m=>{m.material.dispose()});overheadAnims.splice(i,1);continue}
    let up=0;for(let k=i+1;k<overheadAnims.length;k++)if(!overheadAnims[k].leaving)up+=Math.ceil(overheadAnims[k].n/PER_ROW)*ROW_H+.05;a.yOff+=(up-a.yOff)*Math.min(1,dt*6);
-   a.g.position.set(head.x,head.y+.62+a.yOff,head.z);
+   a.g.position.set(head.x,headTopY+.36+a.yOff,head.z);
    const op=THREE.MathUtils.clamp((a.life-el)/a.fade,0,1);
    a.items.forEach((m,j)=>{const lt=el-j*STAGGER;if(lt<0){m.visible=false;return}m.visible=true;
     m.userData.sc=lt<180?THREE.MathUtils.mapLinear(lt,0,180,.01,1.15):(lt<320?THREE.MathUtils.mapLinear(lt,180,320,1.15,1):1);
