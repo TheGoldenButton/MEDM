@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Emoji Room — WebXR</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#e9e9e7;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#171717}
+#c{position:fixed;inset:0;display:block}
+#cog{position:fixed;top:12px;left:12px;z-index:30;width:46px;height:46px;border-radius:50%;border:1px solid #bbb;background:#fff;font-size:24px;cursor:pointer;box-shadow:0 2px 10px #0002}
+#help{position:fixed;top:12px;right:12px;z-index:30;width:46px;height:46px;border-radius:50%;border:1px solid #bbb;background:#fff;font-size:24px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px #0002}
+#hud{display:none;padding-right:44px !important;position:fixed;left:12px;bottom:12px;z-index:20;max-width:min(520px,calc(100vw - 24px));background:#ffffffdf;border:1px solid #ccc;border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.45;backdrop-filter:blur(6px)}
+#hud.open{display:block}
+#hudX{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:1px solid #bbb;background:#fff;font-size:16px;line-height:1;cursor:pointer;padding:0}
+#hud b{font-size:14px} #seq{font-size:22px;min-height:28px;letter-spacing:2px} #status{color:#555}
+#vrBtn{position:fixed;right:12px;bottom:12px;z-index:20;padding:12px 18px;border-radius:999px;border:0;background:#111;color:#fff;font-weight:700;cursor:pointer}
+#modal{position:fixed;inset:0;z-index:50;display:none;place-items:center;background:#0006}
+#modal.open{display:grid}
+.card{background:#fff;border-radius:16px;padding:20px;width:min(480px,92vw);box-shadow:0 20px 60px #0005}
+.card label{display:block;font-size:12px;font-weight:700;margin:12px 0 4px}
+.card input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #bbb;border-radius:9px;font-size:13px}
+.card button{margin-top:14px;padding:10px 14px;border-radius:9px;border:0;background:#111;color:#fff;cursor:pointer}
+.card .ghost{background:#eee;color:#111} .note{font-size:12px;color:#666;line-height:1.4}
+#err{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;background:#b00020;color:#fff;padding:10px 14px;border-radius:10px;display:none;max-width:90vw}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<canvas id="c"></canvas>
+<button id="cog" title="Settings" aria-label="Settings">⚙️</button>
+<button id="help" title="Tips" aria-label="Tips">?</button>
+<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Hold the <b>index trigger</b> on either controller (desktop: hold <b>L</b>) for the emoji wheel; it opens in that hand. The golden ball rests in the centre. Push the <b>thumbstick of the hand holding the wheel</b> toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Or point your <i>other</i> controller at the ball, hold its trigger (desktop: mouse button) and drag it there, then release. Let go anywhere else — or slide off first — and it returns to the centre. The <b>other controller's thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Release the trigger to send above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>). Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Space</b> jumps (desktop).<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
+<button id="vrBtn">Enter VR</button>
+<div id="err"></div>
+<div id="modal"><div class="card"><h2 style="margin:0">Settings — Meta / Muse APIs</h2>
+<p class="note">One Meta API key is used for both Muse Voice Transcribe and Muse Spark. It is stored only in this browser (<code>localStorage</code>), never in this file. Voice needs the key: speech goes to Muse Voice Transcribe, the text goes to Muse Spark. Without a key, voice is off.</p>
+<label>Meta API key (Muse Voice Transcribe + Muse Spark)</label><input id="kMeta" type="password" autocomplete="off" placeholder="Paste Meta API key">
+<label>Muse Voice Transcribe endpoint</label><input id="kTransUrl" type="text">
+<label>Muse Spark endpoint</label><input id="kSparkUrl" type="text">
+<label>Muse Spark model</label><input id="kSparkModel" type="text">
+<div><button id="saveSet">Save</button> <button id="closeSet" class="ghost">Close</button> <button id="clearSet" class="ghost">Clear key</button></div>
+<p class="note">Spark receives one message: a short instruction to translate what you said into an emoji sequence of 12 or less that captures the full statement in order, without adding anything, plus your words. Lewd or hateful content is not translated.</p></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+/* ============ EMOJI SET (only these are ever used) ============
+   Broad, non-lewd vocabulary: feelings, people, actions, animals, nature, food,
+   places, travel, work, tech, objects, time, grammar symbols, colours, shapes,
+   numbers and boxed letters (for names / spelling) — so any everyday message can
+   be built, by hand on the wheel or by Spark. Directly lewd emoji (e.g. 🍆 🍑
+   💦 🫦 🔞 and kiss/sexual symbols) are deliberately excluded; romantic content
+   is carried by hearts/faces instead. Tabs are chunks of at most 33 per page. */
+const EMOJI_CATEGORIES=[
+ ["😀 Feelings I","Joy, love, calm & pride","😀 😃 😄 😁 😆 😅 😂 🤣 😊 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 😎 🤩 🥳 😏 😴 😇 🫠"],
+ ["🤔 Feelings II","Sadness, anger, fear, illness & surprise","😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 😱 😨 😰 😥 😓 🤗 🤔 🤨 😐 😑 😶 🙄 😬 🤐 🤫 🤭 🫢 🫣 🧐 🤓 😈"],
+ ["😮 Reactions","Surprise, doubt, sickness & thinking","😮 😲 😳 😵 😵‍💫 🤯 🥴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥱 😪 🤤 😴 💤 😮‍💨 😶‍🌫️ 🫥 🤠 🥸 🤥 🤫 🤔 🙃 🫡 🤗 🫤"],
+ ["👍 Hands & Signals","Greetings, agreement, pointing & gestures","👍 👎 👏 🙌 🙏 🤝 👋 🤚 🖐️ ✋ 🖖 👌 🤌 🤏 ✌️ 🤞 🫰 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✊ 👊 🤏 🫶 🙋 🙅 🙆 🤷 🤦 🙇 💪"],
+ ["🧠 Body & Health","Body parts, senses, health & care","🧠 🫀 🫁 👀 👁️ 👂 🦻 👃 🗣️ 🦷 🦴 🦵 🦶 👣 🦾 🦿 💅 🤲 🧑‍⚕️ 🏥 💊 💉 🩹 🩺 🌡️ 🧬 🦠 🧼 🛁 🚽 🪥 😷 🧑‍🦽 🧑‍🦯"],
+ ["👶 People","People, ages, family & relationships","👶 🧒 👦 👧 🧑 👨 👩 🧓 👴 👵 👨‍👩‍👧 👨‍👩‍👦 👩‍👩‍👧 👨‍👨‍👧 👪 🧑‍🤝‍🧑 👭 👬 👫 💑 ❤️ 🫂 👥 🗣️ 👤 👥 🧑‍🍼 🤰 🤱 🧎 🧍 🧑‍🦱 🧑‍🦰 🧑‍🦳"],
+ ["🧑‍🏫 Jobs & Roles","Work, school, services & heroes","🧑‍🏫 🧑‍⚕️ 🧑‍🚒 🧑‍🍳 🧑‍🚀 🧑‍🎨 🧑‍🎤 🧑‍💻 🧑‍🔧 🧑‍🌾 🧑‍⚖️ 🧑‍✈️ 👮 🕵️ 💂 👷 🦸 🦹 🧙 🧝 🧜 🧚 🧞 🧟 👑 👸 🤴 🎅 🧑‍🎄 👼 👻 👽 🤖 🎓 🕶️"],
+ ["🏃 Actions & Movement","Moving, sport poses, dance & daily actions","🏃 🚶 🧗 🏊 🚴 💃 🕺 🧘 🏋️ 🤸 🤾 ⛹️ 🏇 🏄 🚣 🚵 🤽 🛌 🛀 🧖 🤹 🪂 🏂 ⛷️ 🤺 🏌️ 🛷 🛼 🛹 🤼 🧑‍🦽 🚶‍➡️ 🏃‍➡️ 🧎‍➡️"],
+ ["🐶 Animals I","Mammals & pets","🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🙈 🙉 🙊 🐒 🐴 🦄 🐗 🐺 🦇 🐔 🐣 🐦 🐧 🦅 🦆 🦉 🦢 🦜"],
+ ["🦋 Animals II","Sea, reptiles, insects & wild animals","🐢 🐍 🦎 🐙 🦑 🦐 🦞 🦀 🐬 🐳 🐋 🦈 🐠 🐟 🐡 🦋 🐛 🐜 🐝 🪲 🐞 🦗 🕷️ 🦂 🐌 🦒 🦓 🦘 🦏 🦛 🐘 🦍 🦧 🐪 🐫 🦙"],
+ ["🌳 Nature & Plants","Plants, trees, flowers & landscape","🌳 🌲 🌴 🌵 🌾 🌿 ☘️ 🍀 🍁 🍂 🍃 🌸 🌻 🌹 🌺 🌼 🌷 🪴 🌱 🌵 🪷 💐 🌊 🏔️ ⛰️ 🏝️ 🏜️ 🏞️ 🌋 🪨 🪵 🔥 💧 🌍 🌎 🌏 🧭 🗺️ 📍"],
+ ["☀️ Weather & Sky","Weather, seasons, sky & space","☀️ 🌤️ ⛅ 🌥️ ☁️ 🌦️ 🌧️ ⛈️ 🌩️ 🌨️ ❄️ ☃️ ⛄ 🌬️ 💨 🌪️ 🌫️ 🌈 🌙 ⭐ 🌟 🌠 🌌 🚀 🛸 ☄️ 🌡️ 🌊 🌅 🌄 🌇 🌆 🏙️ 🌃 🌉 ♨️"],
+ ["🍎 Food I","Fruit, vegetables & ingredients","🍎 🍐 🍊 🍋 🍉 🍇 🍓 🫐 🍒 🍍 🥭 🥝 🍅 🥑 🥦 🥬 🥒 🌽 🥕 🫑 🧄 🧅 🥔 🍠 🫘 🌰 🥜 🍞 🥐 🥖 🧀 🥚 🧈 🥞 🧇"],
+ ["🍕 Food II","Meals, sweets & drinks","🍕 🍔 🌮 🌯 🥙 🧆 🍝 🍜 🍲 🥗 🍣 🍱 🍛 🍚 🍙 🥟 🍤 🍦 🍧 🍨 🍩 🍪 🎂 🍰 🧁 🍫 🍬 ☕ 🍵 🧃 🥛 🫖 🍶 🥤 🧋 🍺 🍷 🥂"],
+ ["🏠 Places","Home, buildings, town & landmarks","🏠 🏡 🏫 🏥 🏢 🏰 🏪 🏦 🏨 🏛️ ⛪ 🕌 🕍 🏟️ 🎪 🎭 🏭 🏗️ 🏘️ 🏚️ 🌉 🛣️ 🗼 🗽 ⛲ 🎡 🎢 🏕️ 🏖️ 🗺️ 📍 🧭 🚏 🚦 🏮 🪧 🚧 🏁"],
+ ["🚗 Travel","Vehicles, journeys & directions","🚗 🚌 🚲 🛴 🏍️ 🚂 🚆 🚇 🚊 🚉 ✈️ 🛫 🛬 🚀 🚁 ⛵ 🚢 🛳️ ⚓ 🛶 🚕 🚙 🛻 🚚 🚑 🚒 🚓 🚕 🛵 🦽 🦼 🚶 🧳 🎒 🛂 🛃"],
+ ["⚽ Sport & Play","Sport, games, toys & luck","⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🏒 🏑 🥅 ⛳ 🎯 🎮 🎲 🧩 ♟️ 🎰 🎳 🪀 🪁 🛝 🛼 🎿 ⛸️ 🥊 🥋 🏆 🥇 🥈 🥉 🎖️ 🏅 🎗️ 🎟️"],
+ ["🎨 Arts & Media","Music, art, film, books & performance","🎨 🎹 🎸 🥁 🎤 🎧 🎶 🎵 🎼 🎬 📚 📖 🎭 🎪 🎤 📷 📸 📹 🎥 📺 📻 🎙️ 🎚️ 🎛️ 🖼️ 🖍️ ✏️ 📝 🎻 🪕 🎺 🎷 🪗 🪈 📕 📗 📘 📙"],
+ ["💻 Tech & Science","Computers, phones, science & space tech","📱 💻 ⌨️ 🖥️ 🖨️ 📷 🔋 🔌 💡 🔦 📡 📶 📳 📴 🔍 🔎 🔬 🔭 🧪 🧫 🧬 🌡️ ⚗️ 🧲 🧭 ⏰ ⏱️ ⏲️ 🕰️ ⌛ ⏳ 📅 📆 🗓️ 🔗 ⛓️ 📎 🖇️ ✂️ 📏 📐"],
+ ["🔧 Tools & Home","Tools, cleaning, safety & everyday objects","🔧 🔨 ⛏️ ⚒️ 🛠️ 🗡️ ⚔️ 🔩 ⚙️ 🧰 🪛 🪚 🔑 🔒 🔓 🗝️ 🚪 🪟 🛏️ 🛋️ 🚿 🛁 🚽 🧹 🪣 🧺 🧼 🪥 🪒 ✂️ 🧸 🪑 🕯️ 🪔 🔐 🧯 🪜 🧲 📦"],
+ ["💼 Work & Money","Money, shopping, office & clothing","💵 💰 🪙 💳 🏧 💎 ⚖️ 🏆 📈 📉 📊 🧾 🛒 🛍️ 🎁 📦 ✉️ 📧 📨 📩 📤 📥 🗃️ 🗄️ 📁 📂 👕 👖 👗 👔 👞 👟 🧢 🎩 👑 💍 👜 🎒 👓 🕶️ ⌚"],
+ ["⏰ Time & Events","Time, calendar, parties & feelings of occasion","⏰ ⏱️ ⏲️ 🕰️ ⌛ ⏳ 📅 📆 🗓️ 🎉 🎊 🎁 🎂 🎈 🎀 🎗️ 🏆 🥳 🎄 🎃 🎆 🎇 🧨 ✨ 💤 💯 🔔 🔕 📣 📢 💬 💭 🗯️ ♻️ 🔄 🔁 🔂 ▶️ ⏩ ⏪ ⏯️ ⏸️ ⏹️"],
+ ["❤️ Symbols & Grammar","Hearts, yes/no, arrows, grammar glue","❤️ 🧡 💛 💚 💙 💜 🤍 🖤 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 ✨ ⭐ 🔴 🟠 🟡 🟢 🔵 🟣 🟤 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 🟫 ⬛ ⬜ 🔶 🔷"],
+ ["✅ Signs & Logic","Agreement, negation, questions & connectors","✅ ❌ ❗ ❓ ⁉️ ‼️ ❔ ❕ 🛑 🚫 ⛔ ⚠️ 🆘 ➕ ➖ ➗ ✖️ 🟰 ♾️ 🔀 🔁 🔂 🔄 🔃 ⤴️ ⤵️ ↔️ ↕️ ↖️ ↗️ ↘️ ↙️ ⬆️ ⬇️ ⬅️ ➡️ 🔼 🔽 👉 👆 🔝 🔙 🔜 🔛"],
+ ["🔟 Numbers & Letters","Numbers, maths, sizes & boxed letters for names","0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟 #️⃣ *️⃣ 🔢 🔤 🔡 🔠 🆔 🆕 🆗 🆙 🆒 🆓 🆖 🅰️ 🅱️ 🆎 🅾️ 🅿️ Ⓜ️ 🄰 🄱 🄲 🄳 🄴 🄵 🄶 🄷 🄸 🄹 🄺 🄻"],
+ ["🔤 Letters II","More boxed letters for spelling names & new words","🄼 🄽 🄾 🄿 🅀 🅁 🅂 🅃 🅄 🅅 🅆 🅇 🅈 🅉 🔼 🔽 ⏫ ⏬ 🐘 🐭 📏 📐 🔍 🔎 🧩 ➰ ➿ 〰️ ©️ ®️ ™️ 💠 🔘 🔳 🔲 ◼️ ◻️ ▪️ ▫️"]];
+/* de-duplicated master list (first occurrence wins) */
+const ALL=[...new Set(EMOJI_CATEGORIES.flatMap(c=>c[2].split(/\s+/).filter(Boolean)))];
+const ALLOWED=new Set(ALL);
+/* wheel tabs: each category in chunks of at most 33, so no page is over-full */
+const TABS=[];
+for(const[name,desc,str]of EMOJI_CATEGORIES){const list=str.split(/\s+/).filter(Boolean).filter((e,i,a)=>a.indexOf(e)===i);
+ const pages=Math.ceil(list.length/33),size=Math.ceil(list.length/pages); /* balanced pages, never >33 */
+ for(let p=0;p<pages;p++)TABS.push({name:pages>1?name+' '+(p+1)+'/'+pages:name,desc,emojis:list.slice(p*size,(p+1)*size)})}
+const statusEl=document.getElementById('status'), seqEl=document.getElementById('seq');
+const setStatus=t=>statusEl.textContent=t;
+window.addEventListener('error',e=>{const d=document.getElementById('err');d.style.display='block';d.textContent='Error: '+e.message});
+
+/* ============ SETTINGS ============ */
+const DEF_T='https://api.meta.ai/v1/asr/transcribe', DEF_S='https://api.meta.ai/v1/chat/completions';
+const STALE=['https://api.meta.ai/v1/muse-spark/chat/completions','https://api.meta.ai/v1/muse/voice/transcribe','muse-spark'];
+for(const k of['museTransUrl','museSparkUrl','museSparkModel'])if(STALE.includes(localStorage.getItem(k)))localStorage.removeItem(k);
+const CONFIG=window.MANUAL_CONFIG||{}; /* your key lives in the MANUAL CONFIG block at the very bottom of this file */
+const settings={key:CONFIG.META_API_KEY||localStorage.getItem('museMetaApiKey')||'',transUrl:CONFIG.TRANSCRIBE_URL||localStorage.getItem('museTransUrl')||DEF_T,sparkUrl:CONFIG.SPARK_URL||localStorage.getItem('museSparkUrl')||DEF_S,model:CONFIG.SPARK_MODEL||localStorage.getItem('museSparkModel')||'muse-spark-1.3'};
+const $=id=>document.getElementById(id);
+$('kMeta').value=settings.key;$('kTransUrl').value=settings.transUrl;$('kSparkUrl').value=settings.sparkUrl;$('kSparkModel').value=settings.model;
+$('help').onclick=()=>$('hud').classList.toggle('open');
+$('hudX').onclick=()=>$('hud').classList.remove('open');
+$('cog').onclick=()=>$('modal').classList.add('open');
+$('closeSet').onclick=()=>$('modal').classList.remove('open');
+$('clearSet').onclick=()=>{$('kMeta').value='';};
+$('saveSet').onclick=()=>{settings.key=$('kMeta').value.trim();settings.transUrl=$('kTransUrl').value.trim()||DEF_T;settings.sparkUrl=$('kSparkUrl').value.trim()||DEF_S;settings.model=$('kSparkModel').value.trim()||'muse-spark-1.3';localStorage.setItem('museMetaApiKey',settings.key);localStorage.setItem('museTransUrl',settings.transUrl);localStorage.setItem('museSparkUrl',settings.sparkUrl);localStorage.setItem('museSparkModel',settings.model);$('modal').classList.remove('open');setStatus(settings.key?'Meta API key saved. Voice will use Muse Voice Transcribe + Muse Spark.':'Settings saved (no key — local voice fallback).');};
+
+/* ============ RENDERER / SCENE ============ */
+const canvas=$('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.xr.enabled=true;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe9e9e7);scene.fog=new THREE.Fog(0xe9e9e7,12,26);
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.05,60);
+const rig=new THREE.Group();rig.position.set(0,0,-2.6);scene.add(rig);rig.add(camera);camera.position.set(0,1.6,0);
+scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,1.1));
+const key=new THREE.DirectionalLight(0xffffff,1.6);key.position.set(3,5,3);key.castShadow=true;scene.add(key);
+const pmrem=new THREE.PMREMGenerator(renderer);
+
+/* blank room */
+{
+ const mat=new THREE.MeshStandardMaterial({color:0xf4f4f2,roughness:.95});
+ const floor=new THREE.Mesh(new THREE.BoxGeometry(10,.1,10),new THREE.MeshStandardMaterial({color:0xdcdcda,roughness:.9}));floor.position.y=-.05;floor.receiveShadow=true;scene.add(floor);
+ const mk=(w,h,x,y,z,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);m.position.set(x,y,z);m.rotation.y=ry;m.receiveShadow=true;scene.add(m)};
+ mk(10,4,0,2,-5,0);mk(10,4,0,2,5,Math.PI);mk(10,4,-5,2,0,Math.PI/2);mk(10,4,5,2,0,-Math.PI/2);
+ const ceil=new THREE.Mesh(new THREE.PlaneGeometry(10,10),new THREE.MeshBasicMaterial({color:0xececea,side:THREE.DoubleSide}));ceil.rotation.x=Math.PI/2;ceil.position.y=4;scene.add(ceil);
+ for(const x of[-2.5,2.5]){const p=new THREE.Mesh(new THREE.BoxGeometry(2,.06,.7),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.4}));p.position.set(x,3.95,0);scene.add(p)}
+}
+/* mirror (real reflection) + frame */
+const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1024,textureHeight:1024,color:0xcfd8dc});
+mirror.position.set(0,1.55,-4.94);scene.add(mirror);
+/* flag the mirror's own render pass so emoji billboards can face (and un-flip for) the reflection camera */
+let inMirror=false;
+/* the wheel is also turned to face the reflection camera (and pre-flipped) so it reads properly in the mirror */
+{const _mob=mirror.onBeforeRender;mirror.onBeforeRender=function(...a){
+  inMirror=true;avatar.visible=true;let flipped=false,sq,ssx;
+  if(wheel.visible){flipped=true;sq=wheel.quaternion.clone();ssx=wheel.scale.x;
+   const vp=new THREE.Vector3().setFromMatrixPosition(a[2].matrixWorld);vp.z=2*mirror.position.z-vp.z;
+   wheel.lookAt(vp);wheel.scale.x=-ssx;wheel.updateMatrixWorld(true)}
+  try{_mob.apply(this,a)}finally{inMirror=false;avatar.visible=false;if(flipped){wheel.quaternion.copy(sq);wheel.scale.x=ssx;wheel.updateMatrixWorld(true)}}}}
+{const f=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.8,.08),new THREE.MeshStandardMaterial({color:0x222222,roughness:.4,metalness:.6}));f.position.set(0,1.55,-4.99);scene.add(f);}
+
+/* ============ HELPERS ============ */
+const emojiTexCache=new Map();
+function emojiTexture(e){if(emojiTexCache.has(e))return emojiTexCache.get(e);const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d');g.font='96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,64,70);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;emojiTexCache.set(e,t);return t}
+function emojiPlane(e,s=.06){const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s),new THREE.MeshBasicMaterial({map:emojiTexture(e),transparent:true,alphaTest:.05,side:THREE.DoubleSide}));m.userData.emoji=e;return m}
+function makeLabel(text,w=.6,h=.15){const cv=document.createElement('canvas');cv.width=512;cv.height=128;const g=cv.getContext('2d');g.fillStyle='#111';g.font='700 84px system-ui';g.textAlign='center';g.fillText(text,256,88);const t=new THREE.CanvasTexture(cv);const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.DoubleSide}));return m}
+function textPanel(w,h){const cv=document.createElement('canvas');cv.width=1024;cv.height=384;const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));m.userData.draw=(title,body)=>{const g=cv.getContext('2d');g.clearRect(0,0,1024,384);g.fillStyle='rgba(255,255,255,.96)';g.beginPath();g.roundRect(0,0,1024,384,36);g.fill();g.strokeStyle='#111';g.lineWidth=6;g.stroke();g.fillStyle='#111';g.font='700 44px system-ui';g.fillText(title,36,62);g.font='40px system-ui';const words=(body||'').split(/\s+/);let line='',y=130;for(const wd of words){if(g.measureText(line+wd).width>940){g.fillText(line,36,y);y+=52;line=''}line+=wd+' ';if(y>340)break}g.fillText(line,36,y);tex.needsUpdate=true};return m}
+function limb(a,b,r,mat){const len=a.distanceTo(b);const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,Math.max(len,.01),6),mat);m.position.copy(a).lerp(b,.5);m.lookAt(b);m.rotateX(Math.PI/2);return m}
+const _up=new THREE.Vector3(0,1,0),_dir=new THREE.Vector3();
+function setLimb(m,a,b){const len=Math.max(a.distanceTo(b),.01);m.scale.set(1,len,1);m.position.copy(a).lerp(b,.5);_dir.copy(b).sub(a).normalize();m.quaternion.setFromUnitVectors(_up,_dir)}
+/* ============ REALISTIC HUMAN AVATAR (procedural, no external assets) ============
+   Volumetric body built from lathe / capsule / tapered-cylinder geometry with
+   skin, hair, shirt, trousers and shoes. Flat `parts` rig kept for the existing
+   pose code: every limb is a unit-height (Y = -0.5..0.5) tapered cylinder that
+   setLimb() stretches between two joints, so radius is true body thickness. */
+function makeHuman(){
+ const g=new THREE.Group();
+ const skin=new THREE.MeshStandardMaterial({color:0xc68863,roughness:.62});
+ const skinDark=new THREE.MeshStandardMaterial({color:0xa9714b,roughness:.65});
+ const hairMat=new THREE.MeshStandardMaterial({color:0x2b211c,roughness:.85});
+ const shirt=new THREE.MeshStandardMaterial({color:0x2e5f7a,roughness:.78});
+ const pants=new THREE.MeshStandardMaterial({color:0x2b2f36,roughness:.82});
+ const shoeMat=new THREE.MeshStandardMaterial({color:0x1c1c1e,roughness:.45});
+ const eyeMat=new THREE.MeshStandardMaterial({color:0x181210,roughness:.25});
+ const lipMat=new THREE.MeshStandardMaterial({color:0x9e5a52,roughness:.6});
+ const add=m=>{m.castShadow=true;g.add(m);return m};
+ /* limb between joints a->b: CylinderGeometry(radiusTop,radiusBottom) — top (+Y)
+    is mapped by setLimb onto b, bottom onto a, so pass (radiusAtB, radiusAtA). */
+ const limbMesh=(rB,rA,mat)=>add(new THREE.Mesh(new THREE.CylinderGeometry(rB,rA,1,18),mat));
+ const joint=(r,mat)=>add(new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat));
+ const lathe=(profile,mat)=>{const m=new THREE.Mesh(new THREE.LatheGeometry(profile.map(p=>new THREE.Vector2(p[0],p[1])),28),mat);m.castShadow=true;g.add(m);return m};
+ /* torso in avatar-local coords (avatar forward = -Z): pelvis -> waist -> chest -> shoulders */
+ const torso=lathe([[.001,.86],[.125,.88],[.148,.96],[.138,1.02],[.112,1.10],[.118,1.20],[.152,1.30],[.162,1.38],[.138,1.46],[.055,1.50],[.001,1.51]],shirt);
+ const pelvis=lathe([[.001,.84],[.11,.86],[.148,.94],[.142,1.01],[.001,1.03]],pants);
+ const neck=add(new THREE.Mesh(new THREE.CylinderGeometry(.042,.05,.14,16),skin));neck.position.y=1.53;
+ /* head group (positioned at y=1.62, yawed with the body each frame) */
+ const head=new THREE.Group();g.add(head);
+ const skull=new THREE.Mesh(new THREE.SphereGeometry(.108,28,22),skin);skull.scale.set(.94,1.18,.98);skull.castShadow=true;head.add(skull);
+ const jaw=new THREE.Mesh(new THREE.SphereGeometry(.082,22,16),skin);jaw.scale.set(.92,.78,.9);jaw.position.set(0,-.055,-.012);head.add(jaw);
+ const hair=new THREE.Mesh(new THREE.SphereGeometry(.113,28,20,0,Math.PI*2,0,Math.PI*.58),hairMat);hair.scale.set(.97,1.16,1.0);hair.position.set(0,.014,.014);hair.rotation.x=-.28;head.add(hair);
+ const nose=new THREE.Mesh(new THREE.SphereGeometry(.016,12,10),skinDark);nose.scale.set(.8,1.25,.9);nose.position.set(0,-.012,-.104);head.add(nose);
+ for(const s of[-1,1]){
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(.011,10,8),eyeMat);eye.position.set(s*.038,.022,-.097);head.add(eye);
+  const brow=new THREE.Mesh(new THREE.BoxGeometry(.032,.006,.006),hairMat);brow.position.set(s*.039,.043,-.10);brow.rotation.z=-s*.12;head.add(brow);
+  const ear=new THREE.Mesh(new THREE.SphereGeometry(.02,10,8),skin);ear.scale.set(.45,1,.7);ear.position.set(s*.102,-.005,0);head.add(ear);
+ }
+ const mouth=new THREE.Mesh(new THREE.BoxGeometry(.034,.006,.006),lipMat);mouth.position.set(0,-.062,-.096);head.add(mouth);
+ /* hands (flattened, elongated) and shoes (rounded box, toe forward -Z) */
+ const mkHand=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),skin));m.scale.set(.85,1.3,.5);return m};
+ const mkShoe=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(1,18,12),shoeMat));m.scale.set(.046,.027,.12);return m};
+ const parts={
+  torso,pelvis,neck,head,
+  body:limbMesh(.001,.001,shirt),clav:limbMesh(.001,.001,shirt), /* hidden legacy spans, replaced by torso/clavicle volume */
+  upL:limbMesh(.042,.062,shirt),foreL:limbMesh(.034,.043,skin),upR:limbMesh(.042,.062,shirt),foreR:limbMesh(.034,.043,skin),
+  thighL:limbMesh(.058,.082,pants),shinL:limbMesh(.042,.056,pants),thighR:limbMesh(.058,.082,pants),shinR:limbMesh(.042,.056,pants),
+  legL:limbMesh(.001,.001,pants),legR:limbMesh(.001,.001,pants), /* legacy, hidden */
+  jShL:joint(.066,shirt),jShR:joint(.066,shirt),jElL:joint(.04,skin),jElR:joint(.04,skin),
+  jKnL:joint(.055,pants),jKnR:joint(.055,pants),jHaL:mkHand(),jHaR:mkHand(),
+  footL:mkShoe(),footR:mkShoe()};
+ parts.body.visible=false;parts.clav.visible=false;parts.legL.visible=false;parts.legR.visible=false;
+ g.userData.parts=parts;return g}
+const makeStick=makeHuman; /* legacy alias */
+/* your avatar — seen in the mirror (and as a body below the headset in XR) */
+const avatar=makeHuman();avatar.visible=false;scene.add(avatar); /* only shown during the mirror's render pass, so you never see your own body */
+
+/* controllers / hands */
+const ctrlL=renderer.xr.getController(0),ctrlR=renderer.xr.getController(1);rig.add(ctrlL,ctrlR);
+const ctrlHand={left:ctrlL,right:ctrlR};
+{const cs=[ctrlL,ctrlR];cs.forEach(c=>c.addEventListener('connected',e=>{c.userData.h=e.data&&e.data.handedness;
+ if(cs[0].userData.h==='right'||cs[1].userData.h==='left'){ctrlHand.left=cs[1];ctrlHand.right=cs[0]}
+ else if(cs[0].userData.h==='left'||cs[1].userData.h==='right'){ctrlHand.left=cs[0];ctrlHand.right=cs[1]}}))}
+const handL=renderer.xr.getHand(0),handR=renderer.xr.getHand(1);rig.add(handL,handR);
+for(const c of[ctrlL,ctrlR]){const ray=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.7,6),new THREE.MeshBasicMaterial({color:0xffc400}));ray.position.z=-.35;ray.rotation.x=Math.PI/2;c.add(ray)}
+function sourceFor(handedness){let found={pad:null,trigger:false,squeeze:false,aBtn:false,stick:[0,0],src:null};
+ for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}}return found}
+function worldPos(obj,out){return obj.getWorldPosition(out||new THREE.Vector3())}
+
+/* ============ EMOJI WHEEL ============ */
+const wheel=new THREE.Group();wheel.visible=false;scene.add(wheel);
+const disc=new THREE.Mesh(new THREE.CircleGeometry(.38,64),new THREE.MeshStandardMaterial({color:0x14161c,transparent:true,opacity:.92,roughness:.4,side:THREE.DoubleSide}));wheel.add(disc);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(.38,.007,8,96),new THREE.MeshBasicMaterial({color:0xffd34d}));wheel.add(ring);
+function matcap(c0,c1,c2){const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d');const gr=g.createRadialGradient(46,42,4,64,64,64);gr.addColorStop(0,'#ffffff');gr.addColorStop(.16,c0);gr.addColorStop(.68,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,128,128);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t}
+const matGold=matcap('#ffe27a','#f5a800','#7a3f00'),matGreen=matcap('#d6ffe6','#2fe08a','#075c33');
+const ball=new THREE.Mesh(new THREE.SphereGeometry(.03,48,32),new THREE.MeshMatcapMaterial({matcap:matGold}));
+ball.position.z=.025;wheel.add(ball);
+/* electrical charge: a crackling arc from the centre of the wheel to the golden ball (no light under the ball) */
+const ARC_N=16,ARC_AMP=[.016,.03,.045];
+function makeArc(color,op){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array((ARC_N+1)*3),3));
+ const l=new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false}));l.frustumCulled=false;return l}
+const arcs=[makeArc(0xffffff,1),makeArc(0xffd34d,.9),makeArc(0xff9d00,.7)];arcs.forEach(a=>wheel.add(a));
+const core=new THREE.Mesh(new THREE.SphereGeometry(.014,16,12),new THREE.MeshBasicMaterial({color:0xfff3b0,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));core.position.z=.026;wheel.add(core);
+let arcClock=0;
+function updateArcs(dt,t,tx,ty){const len=Math.hypot(tx,ty);core.scale.setScalar(1+.35*Math.sin(t*40));core.visible=true;
+ arcClock-=dt;if(arcClock>0)return;arcClock=.03; /* re-roll the lightning ~33 times a second */
+ arcs.forEach((a,k)=>{a.visible=len>.02;if(!a.visible)return;const p=a.geometry.attributes.position,nx=-ty/len,ny=tx/len;
+  for(let i=0;i<=ARC_N;i++){const f=i/ARC_N,j=(i===0||i===ARC_N)?0:(Math.random()-.5)*2*ARC_AMP[k]*Math.min(1,len/.2);p.setXYZ(i,tx*f+nx*j,ty*f+ny*j,.026)}p.needsUpdate=true})}
+let spokeLines=null,emojiMeshes=[];
+const wheelTitle=textPanel(.42,.13);wheelTitle.position.set(0,.58,.01);wheel.add(wheelTitle);
+const seqStrip=new THREE.Group();seqStrip.position.set(0,.45,.015);wheel.add(seqStrip);
+let tabIndex=0,sequence=[],snapped=null,lockedEmoji=null,dwell=0,ballTarget=new THREE.Vector2(),ballPos=new THREE.Vector2(),tabCooldown=0;
+const RING_R=.335,WHEEL_R=.38;
+const MAX_EMOJI=12,PER_ROW=4,ROW_H=.45; /* hard cap: 12 emojis per message AND 12 visible overhead at once; rows of 4 stack upward */
+function buildWheel(){
+ for(const m of emojiMeshes)wheel.remove(m);emojiMeshes=[];
+ if(spokeLines){wheel.remove(spokeLines);spokeLines.geometry.dispose()}
+ const tab=TABS[tabIndex],n=tab.emojis.length,pts=[];
+ tab.emojis.forEach((e,i)=>{const ang=Math.PI/2-i/n*Math.PI*2; /* all emojis sit on the outer edge, starting at the top */
+  const p=new THREE.Vector3(Math.cos(ang)*RING_R,Math.sin(ang)*RING_R,.012);
+  const m=emojiPlane(e,.05);m.position.copy(p);m.userData.home=p.clone();wheel.add(m);emojiMeshes.push(m);
+  const nb=ang-Math.PI/n; /* compass notch halfway between this emoji and the next */
+  pts.push(Math.cos(nb)*.348,Math.sin(nb)*.348,.008,Math.cos(nb)*.378,Math.sin(nb)*.378,.008)});
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+ spokeLines=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0xffd34d,transparent:true,opacity:.9}));wheel.add(spokeLines);
+ wheelTitle.userData.draw(TABS[tabIndex].name,TABS[tabIndex].desc+'  •  page '+(tabIndex+1)+'/'+TABS.length+'  •  Q/E or right-stick flick');
+ renderSeqStrip();}
+function renderSeqStrip(){while(seqStrip.children.length)seqStrip.remove(seqStrip.children[0]);
+ sequence.forEach((e,i)=>{const m=emojiPlane(e,.05);m.position.set((i-(sequence.length-1)/2)*.058,0,0);seqStrip.add(m)});
+ seqEl.textContent=sequence.join(' ');}
+function setTab(i){tabIndex=(i+TABS.length)%TABS.length;snapped=null;lockedEmoji=null;dwell=0;armedPeg=null;buildWheel()}
+buildWheel();
+function selectEmoji(e){if(sequence.length>=MAX_EMOJI){lockedEmoji=e;dwell=0;setStatus('Max '+MAX_EMOJI+' emojis — release the trigger to send.');return}sequence.push(e);renderSeqStrip();setStatus('Selected '+e+' — keep holding left trigger, release to send.');ballPos.set(0,0);ballTarget.set(0,0);snapped=null;lockedEmoji=e;dwell=0;
+ try{const s=sourceFor('right').src||sourceFor('left').src;s?.hapticActuators?.[0]?.pulse?.(.6,40)}catch(_){}}
+const overheadAnims=[];
+const STAGGER=480,HOLD_MS=7000,FADE_MS=1000;
+const _cp=new THREE.Vector3();
+/* upright billboard that faces whichever camera is rendering it (your eyes OR the mirror's reflection camera).
+   In the mirror pass the quad + order are pre-flipped so the reflection reads correctly, like it does in the room. */
+function billboard(r,sc,cam){
+ const u=this.userData,g=this.parent;_cp.setFromMatrixPosition(cam.matrixWorld);
+ const yaw=Math.atan2(_cp.x-g.position.x,_cp.z-g.position.z),sg=inMirror?-1:1;
+ const row=Math.floor(u.j/PER_ROW),rows=Math.ceil(u.a.n/PER_ROW),rc=Math.min(PER_ROW,u.a.n-row*PER_ROW),col=u.j-row*PER_ROW;
+ const ox=(col-(rc-1)/2)*ROW_H*sg,oy=(rows-1-row)*ROW_H; /* first emojis on the top row, rows stack upward from the head */
+ this.position.set(Math.cos(yaw)*ox,oy,-Math.sin(yaw)*ox);this.rotation.set(0,yaw,0);this.scale.set(sg*u.sc,u.sc,u.sc);
+ this.updateMatrix();this.matrixWorld.multiplyMatrices(g.matrixWorld,this.matrix)}
+function popSequence(list){
+ list=list.slice(0,MAX_EMOJI);if(!list.length)return;
+ /* keep no more than MAX_EMOJI visible in total: quickly fade the oldest messages */
+ {let total=list.length;for(let i=overheadAnims.length-1;i>=0;i--){const o=overheadAnims[i];if(o.leaving)continue;total+=o.n;if(total>MAX_EMOJI){const el=performance.now()-o.start;o.leaving=true;o.fade=350;o.life=Math.min(o.life,el+350)}}}
+ const g=new THREE.Group();scene.add(g);
+ const a={g,items:[],n:list.length,start:performance.now(),yOff:0,fade:FADE_MS,leaving:false,life:(list.length-1)*STAGGER+HOLD_MS+FADE_MS};
+ list.forEach((e,j)=>{const m=emojiPlane(e,.4);m.visible=false;m.userData.j=j;m.userData.a=a;m.userData.sc=.01;m.onBeforeRender=billboard;m.frustumCulled=false;g.add(m);a.items.push(m)});
+ overheadAnims.push(a)}
+/* '...' thinking indicator: three bouncing dots above your head while a message is being translated */
+const dotTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=64;const g=cv.getContext('2d');g.fillStyle='#2a2a2a';g.beginPath();g.arc(32,32,22,0,Math.PI*2);g.fill();const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t})();
+const dots=new THREE.Group();dots.visible=false;scene.add(dots);
+for(let i=0;i<3;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(.1,.1),new THREE.MeshBasicMaterial({map:dotTex,transparent:true,side:THREE.DoubleSide}));m.userData.i=i;m.frustumCulled=false;
+ m.onBeforeRender=function(r,sc,cam){const g=this.parent;_cp.setFromMatrixPosition(cam.matrixWorld);
+  const yaw=Math.atan2(_cp.x-g.position.x,_cp.z-g.position.z),sg=inMirror?-1:1,i=this.userData.i;
+  const ox=(i-1)*.16*sg,oy=Math.max(0,Math.sin(performance.now()/180-i*.9))*.1;
+  this.position.set(Math.cos(yaw)*ox,oy,-Math.sin(yaw)*ox);this.rotation.set(0,yaw,0);this.updateMatrix();this.matrixWorld.multiplyMatrices(g.matrixWorld,this.matrix)};
+ dots.add(m)}
+/* voice transcript panel */
+const voicePanel=textPanel(.85,.32);voicePanel.visible=false;scene.add(voicePanel);
+voicePanel.userData.draw('🎙️ Muse Voice Transcribe','Hold left trigger + A and speak…');
+
+/* ============ VOICE: Muse Voice Transcribe -> Muse Spark ============ */
+let recog=null,listening=false,transcript='',silenceTimer=null,mediaRec=null,mediaChunks=[];
+/* local fallback: ordered phrase-first keyword map (longer / more specific first) */
+const LOCAL_MAP=[[/\b(love you|i love)\b/i,'❤️'],[/\b(thank you|thanks)\b/i,'🙏'],[/\b(good morning)\b/i,'🌅'],[/\b(good night)\b/i,'🌙'],[/\b(happy birthday)\b/i,'🎂'],[/\b(not|no|never|don't|dont|can't|cant|won't)\b/i,'🚫'],[/\b(yesterday)\b/i,'⏪'],[/\b(tomorrow)\b/i,'⏩'],[/\b(today|now)\b/i,'📅'],[/\b(before)\b/i,'⏪'],[/\b(after|later)\b/i,'⏩'],[/\b(very|really|so much)\b/i,'💯'],[/\b(many|much|more)\b/i,'➕'],[/\b(little|small|less)\b/i,'🔽'],[/\b(big|large|huge)\b/i,'🔼'],[/\b(fast|quick|hurry)\b/i,'⏩'],[/\b(slow)\b/i,'🐢'],[/\b(happy|joy|fun|great|love|like|glad|excited)\b/i,'😀'],[/\b(sad|cry|miss|lonely)\b/i,'😢'],[/\b(angry|mad|annoyed)\b/i,'😡'],[/\b(scared|afraid|worried|sick|ill|hurt|pain)\b/i,'😨'],[/\b(tired|sleep|sleepy|bed)\b/i,'😴'],[/\b(hungry|eat|food|pizza|breakfast|lunch|dinner)\b/i,'🍕'],[/\b(hello|hi|hey)\b/i,'👋'],[/\b(goodbye|bye)\b/i,'👋'],[/\b(please)\b/i,'🙏'],[/\b(yes|ok|sure|right)\b/i,'👍'],[/\b(stop|wait)\b/i,'🛑'],[/\b(help)\b/i,'🆘'],[/\b(home|house)\b/i,'🏠'],[/\b(school|book|learn|study|read)\b/i,'📚'],[/\b(work|job|office|meeting)\b/i,'💼'],[/\b(music|sing|song)\b/i,'🎶'],[/\b(movie|film|watch|tv)\b/i,'🎬'],[/\b(play|game|football|soccer|ball)\b/i,'⚽'],[/\b(dog)\b/i,'🐶'],[/\b(cat)\b/i,'🐱'],[/\b(bird)\b/i,'🐦'],[/\b(fish)\b/i,'🐟'],[/\b(rain)\b/i,'🌧️'],[/\b(sun|sunny)\b/i,'☀️'],[/\b(snow|cold)\b/i,'❄️'],[/\b(fire|hot)\b/i,'🔥'],[/\b(water|drink|thirsty)\b/i,'💧'],[/\b(tree|flower|garden|nature)\b/i,'🌳'],[/\b(car|drive)\b/i,'🚗'],[/\b(bus)\b/i,'🚌'],[/\b(train)\b/i,'🚂'],[/\b(fly|plane|travel|trip)\b/i,'✈️'],[/\b(boat|sea|ocean|swim)\b/i,'🌊'],[/\b(walk|run|go|come)\b/i,'🏃'],[/\b(buy|shop|money|pay|cost)\b/i,'💰'],[/\b(phone|call|computer)\b/i,'📱'],[/\b(time|clock|when)\b/i,'⏰'],[/\b(friend)\b/i,'🧑‍🤝‍🧑'],[/\b(family|mother|father|mom|dad|brother|sister|baby|child)\b/i,'👪'],[/\b(i|me)\b/i,'🧑'],[/\b(you)\b/i,'👉'],[/\b(question|why|what|where|who|how)\b/i,'❓'],[/\b(one)\b/i,'1️⃣'],[/\b(two)\b/i,'2️⃣'],[/\b(three)\b/i,'3️⃣'],[/\b(four)\b/i,'4️⃣'],[/\b(five)\b/i,'5️⃣']];
+function localTranslate(text){const out=[];for(const[re,e]of LOCAL_MAP)if(re.test(text)&&ALLOWED.has(e)&&!out.includes(e))out.push(e);if(!out.length)out.push('💬','✨');return out.slice(0,MAX_EMOJI)}
+/* Spark is NOT given any emoji list: it chooses its own emojis. Its reply is
+   only sanitised here — words/punctuation stripped, directly lewd emoji dropped,
+   and the result capped — never restricted to the wheel vocabulary. */
+const LEWD_EMOJI=new Set(['🍆','🍑','💦','🫦','🔞','🍌','👅','👄','💋']);
+function sanitizeEmojis(str){const seg=new Intl.Segmenter(undefined,{granularity:'grapheme'});const out=[];
+ for(const s of seg.segment(str||'')){const g=s.segment.trim();if(!g)continue;
+  if([...LEWD_EMOJI].some(e=>g.includes(e)))continue; /* lewd, even inside a ZWJ sequence */
+  if(!(/\p{Extended_Pictographic}/u.test(g)||/[0-9#*]️?⃣/.test(g)||/[\u{1F000}-\u{1FAFF}☀-➿⬀-⻿①-⓿]/u.test(g)))continue; /* not an emoji */
+  out.push(g);if(out.length>=MAX_EMOJI)break}return out}
+const SPARK_PROMPT='translate this into an emoji sequence of 12 or less symbols that captures the full statement, in order. Translate only what was said: do not add events, details, outcomes or interpretation that are not in the statement, and do not pad. Use only as many symbols as the statement needs. Do not translate anything lewd or hateful.';
+function showErr(msg){const d=document.getElementById('err');d.style.display='block';d.textContent=msg;clearTimeout(showErr.t);showErr.t=setTimeout(()=>d.style.display='none',12000)}
+/* pull text out of the many shapes a chat API can answer with */
+function extractText(j){const m=j?.choices?.[0]?.message;let c=m?.content;
+ if(Array.isArray(c))c=c.map(p=>typeof p==='string'?p:(p.text||'')).join('');
+ return c||j?.output_text||j?.text||j?.content?.[0]?.text||j?.output?.[0]?.content?.[0]?.text||''}
+/* returns {seq, via:'spark'|'local', why} — never fails silently */
+async function sparkTranslate(text){
+ let why='';
+ if(!settings.key)why='no Meta API key set (add it in ⚙ settings or the MANUAL CONFIG block)';
+ else{try{
+   const r=await fetch(settings.sparkUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.key},body:JSON.stringify({model:settings.model,temperature:0.3,reasoning_effort:'minimal',max_completion_tokens:2000,messages:[{role:'user',content:SPARK_PROMPT+'\n\n'+text}]})});
+   const raw=await r.text();console.log('[Muse Spark]',r.status,raw);
+   if(!r.ok)why='HTTP '+r.status+' from Spark: '+raw.slice(0,160);
+   else{let j=null;try{j=JSON.parse(raw)}catch(_){}
+    const out=j?extractText(j):raw;const f=sanitizeEmojis(out);
+    if(f.length)return{seq:f,via:'spark',why:''};
+    why='Spark replied with no emojis (finish_reason='+(j?.choices?.[0]?.finish_reason)+', reasoning_tokens/usage='+JSON.stringify(j?.usage||{}).slice(0,120)+'). Raw: '+raw.slice(0,200)}
+  }catch(e){why='could not reach Spark ('+e.message+') — likely a wrong endpoint URL or CORS block'}}
+ console.warn('[Muse Spark] fallback:',why);
+ return{seq:localTranslate(text),via:'local',why}}
+let thinkingCount=0,curSession=null;
+async function finishVoice(said){
+ thinkingCount++;setStatus('Sending to Muse Spark… "'+said+'"');
+ let res;try{res=await sparkTranslate(said)}finally{thinkingCount--}
+ if(res.via==='local'){showErr('Spark failed, so the crude local fallback was used. Reason: '+res.why);setStatus('⚠️ LOCAL fallback (not Spark) for "'+said+'": '+res.seq.join(' '))}
+ else setStatus('Voice message sent: '+res.seq.join(' '));
+ if(res.seq.length)popSequence(res.seq)}
+
+/* ---- mic capture -> 16 kHz mono 16-bit WAV (the only format Muse Voice Transcribe accepts) ---- */
+const TRANS_MODEL=CONFIG.TRANSCRIBE_MODEL||'muse-voice-transcribe-1.0';
+async function beginCapture(){
+ const stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});
+ const AC=window.AudioContext||window.webkitAudioContext;let ctx;try{ctx=new AC({sampleRate:16000})}catch(_){ctx=new AC()}
+ try{await ctx.resume()}catch(_){}
+ const src=ctx.createMediaStreamSource(stream),node=ctx.createScriptProcessor(4096,1,1);
+ const c={ctx,stream,src,node,chunks:[],rate:ctx.sampleRate};
+ node.onaudioprocess=e=>c.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); /* output stays silent */
+ src.connect(node);node.connect(ctx.destination);return c}
+function encodeWav(f,rate){const n=f.length,buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+ const w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+ w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+ for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,f[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}
+ return new Blob([buf],{type:'audio/wav'})}
+/* stops the mic; returns a WAV blob, or null if discarded / too short to contain speech */
+function stopCapture(c,discard){
+ try{c.node.onaudioprocess=null;c.src.disconnect();c.node.disconnect()}catch(_){}
+ c.stream.getTracks().forEach(t=>t.stop());try{c.ctx.close()}catch(_){}
+ if(discard)return null;
+ let n=0;for(const k of c.chunks)n+=k.length;let pcm=new Float32Array(n),o=0;for(const k of c.chunks){pcm.set(k,o);o+=k.length}
+ if(c.rate!==16000){const ratio=c.rate/16000,m=Math.floor(n/ratio),out=new Float32Array(m);
+  for(let i=0;i<m;i++){const p=i*ratio,i0=Math.floor(p),i1=Math.min(i0+1,n-1),fr=p-i0;out[i]=pcm[i0]*(1-fr)+pcm[i1]*fr}pcm=out}
+ if(pcm.length<16000*.3)return null;
+ return encodeWav(pcm,16000)}
+/* Muse Voice Transcribe: multipart with a JSON 'request' part and a WAV 'audio' part, built by hand so the part headers match the docs exactly */
+async function metaTranscribe(wav){
+ const B='----museboundary'+Math.random().toString(16).slice(2);
+ const head='--'+B+'\r\nContent-Disposition: form-data; name="request"\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify({model:TRANS_MODEL,audioEncoding:'WAV',mode:'PUSH_TO_TALK'})+'\r\n--'+B+'\r\nContent-Disposition: form-data; name="audio"; filename="voice.wav"\r\nContent-Type: audio/wav\r\n\r\n';
+ const body=new Blob([head,wav,'\r\n--'+B+'--\r\n']);
+ let r;try{r=await fetch(settings.transUrl,{method:'POST',headers:{'Authorization':'Bearer '+settings.key,'Accept':'application/json','Content-Type':'multipart/form-data; boundary='+B},body})}
+ catch(e){throw new Error('could not reach '+settings.transUrl+' ('+e.message+') — wrong URL or the browser blocked it (CORS)')}
+ const raw=await r.text();console.log('[Muse Transcribe]',r.status,raw);
+ if(!r.ok)throw new Error('HTTP '+r.status+': '+raw.slice(0,160));
+ let j;try{j=JSON.parse(raw)}catch(_){throw new Error('unreadable reply: '+raw.slice(0,120))}
+ return String(j.transcript||'').trim()}
+
+/* hold to talk: the mic records while the trigger is held; releasing sends it to Muse Voice Transcribe then Spark; waving through the box cancels */
+function startListening(){if(listening)return;
+ if(!settings.key){showErr('Voice needs your Meta API key (⚙ settings or the MANUAL CONFIG block).');setStatus('No Meta API key — voice is off.');return}
+ if(!navigator.mediaDevices?.getUserMedia){showErr('This browser has no microphone access.');return}
+ const s={released:false,cancelled:false,cap:null};curSession=s;listening=true;
+ voicePanel.visible=true;voicePanel.userData.draw('🎙️ Listening…','Speak now. Release the trigger to send. Wave your right hand through this box to cancel.');
+ setStatus('Listening… release the trigger to send.');
+ beginCapture().then(c=>{if(s.cancelled){stopCapture(c,true);return}s.cap=c;if(s.released)processRelease(s)})
+  .catch(e=>{if(s.cancelled)return;s.cancelled=true;listening=false;voicePanel.visible=false;if(s.released)thinkingCount--;showErr('Microphone unavailable: '+e.message);setStatus('Could not start the microphone.')})}
+function releaseVoice(){if(!listening)return;listening=false;voicePanel.visible=false;const s=curSession;s.released=true;thinkingCount++;
+ if(s.cap)processRelease(s)} /* else it is processed as soon as the mic finishes opening */
+async function processRelease(s){
+ try{
+  const wav=stopCapture(s.cap);
+  if(!wav){setStatus('Nothing heard — nothing sent.');return}
+  setStatus('Transcribing with Muse Voice Transcribe…');
+  const said=await metaTranscribe(wav);
+  if(!said){setStatus('Muse heard no words — nothing sent.');return}
+  setStatus('Heard: "'+said+'"');
+  finishVoice(said)}
+ catch(e){showErr('Muse Voice Transcribe failed: '+e.message);setStatus('Transcription failed — nothing sent.')}
+ finally{thinkingCount--}}
+/* waving through the box cancels everything: nothing is sent */
+function breakSentence(){if(!voicePanel.visible||!curSession)return;const s=curSession;s.cancelled=true;listening=false;
+ if(s.cap)stopCapture(s.cap,true);voicePanel.visible=false;setStatus('✂️ Cancelled — nothing was sent.')}
+
+/* ============ INPUT / DESKTOP FALLBACK ============ */
+const mouseN=new THREE.Vector2();const keys={};let mouseDown=false,pointerLocked=false;
+addEventListener('keydown',e=>{keys[e.code]=true;if(e.target&&e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();if(!e.repeat&&rig.position.y<=.001&&jumpV===0)jumpV=3.4}if(wheelOpen&&e.code==='ArrowLeft')setTab(tabIndex-1);if(wheelOpen&&e.code==='ArrowRight')setTab(tabIndex+1);if(e.code==='KeyQ')setTab(tabIndex-1);if(e.code==='KeyE')setTab(tabIndex+1);if(e.code==='KeyV'&&!e.repeat)startListening();if(e.code==='Escape')breakSentence()});
+addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyL')closeWheelAndSend();if(e.code==='KeyV')releaseVoice()});
+let yaw=0,pitch=0,dragging=false,lx=0,ly=0;
+canvas.addEventListener('pointerdown',e=>{if(wheelOpen&&wheelHand==='desktop'){mouseDown=true;return}dragging=true;lx=e.clientX;ly=e.clientY});
+addEventListener('pointerup',()=>{dragging=false;mouseDown=false});
+addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=(e.clientX-lx)*.003;pitch=THREE.MathUtils.clamp(pitch-(e.clientY-ly)*.003,-1.2,1.2);lx=e.clientX;ly=e.clientY}
+ mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1))});
+let wheelOpen=false,wheelHand=null,voiceHand=null,wasTrigger=false,stickDir=0,stickRep=0,jumpV=0,wasGrab=false,armedPeg=null,ballHeld=false,viaStick=false,armedMem=null,armedMemT=0;
+const holdOff=new THREE.Vector2(),GRAB_R=.08;
+const OUTER=.30; /* the ball must be out on the rim (the outer pegs) before anything can be picked */
+const prevH={left:{trigger:false,squeeze:false},right:{trigger:false,squeeze:false}};
+function openWheel(h){if(wheelOpen)return;wheelOpen=true;wheelHand=h||'desktop';wheel.visible=true;lockedEmoji=null;dwell=0;ballHeld=false;viaStick=false;ballPos.set(0,0);ballTarget.set(0,0);setStatus('Wheel open — page: '+TABS[tabIndex].name+'. Push your thumbstick toward an emoji and let go to pick it (or grab the ball with your other controller\'s pointer + trigger). The other thumbstick left/right flips pages.')}
+function cancelWheel(){wheelOpen=false;wheelHand=null;wheel.visible=false;sequence=[];renderSeqStrip()}
+function closeWheelAndSend(){if(!wheelOpen)return;wheelOpen=false;wheelHand=null;wheel.visible=false;
+ if(sequence.length){const s=[...sequence];sequence=[];renderSeqStrip();popSequence(s);setStatus('Sent above your head: '+s.join(' '))}}
+
+/* VR button */
+$('vrBtn').onclick=async()=>{if(!navigator.xr){setStatus('WebXR not available in this browser — desktop preview still works.');return}
+ try{const ok=await navigator.xr.isSessionSupported('immersive-vr');if(!ok){setStatus('Immersive VR not supported on this device/browser.');return}
+  const session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});
+  await renderer.xr.setSession(session);$('vrBtn').textContent='In VR — use controllers';}catch(e){setStatus('Could not start VR: '+e.message)}};
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+/* ============ MAIN LOOP ============ */
+const clock=new THREE.Clock();const tmpV=new THREE.Vector3(),tmpV2=new THREE.Vector3(),tmpV3=new THREE.Vector3();
+const _plane=new THREE.Plane(),_hit=new THREE.Vector3();
+const vel=new THREE.Vector3();let walkPhase=0,bodyYaw=0;const smL=new THREE.Vector3(-.22,.8,-.03),smR=new THREE.Vector3(.22,.8,-.03);
+/* two-bone arm IK: shoulder -> elbow -> hand, elbow bends toward a 'pole' direction (down / outward / back) */
+const ARM1=.33,ARM2=.33,LEG1=.46,LEG2=.46;
+function solveArm(S,H,pole,L1=ARM1,L2=ARM2){
+ const v=H.clone().sub(S);let d=v.length();const dir=d>1e-5?v.divideScalar(d):new THREE.Vector3(0,-1,0);
+ d=THREE.MathUtils.clamp(d,.08,(L1+L2)*.995);
+ const a=(L1*L1-L2*L2+d*d)/(2*d),h=Math.sqrt(Math.max(0,L1*L1-a*a));
+ const p=pole.clone().addScaledVector(dir,-pole.dot(dir));if(p.lengthSq()<1e-6)p.set(1,0,0).addScaledVector(dir,-dir.x);p.normalize();
+ return{el:S.clone().addScaledVector(dir,a).addScaledVector(p,h),ha:S.clone().addScaledVector(dir,d)}}
+/* desktop 'left hand': a spot low-left in front of you; the wheel is held just above/in front of it */
+const WHEEL_D=.85;
+function wheelLayout(){const halfH=WHEEL_D*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),halfW=halfH*camera.aspect;
+ const sc=Math.min(1,(halfH*1.5)/.82,(halfW*1.9)/.82);const xOff=-Math.min(.3,Math.max(0,halfW-.45*sc));return{halfH,halfW,sc,xOff,yOff:-.1}}
+function desktopHand(){const l=wheelLayout();return new THREE.Vector3(l.xOff,l.yOff-.22,-WHEEL_D+.3).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).add(worldPos(camera,new THREE.Vector3()))}
+function animate(){renderer.setAnimationLoop(()=>{
+ const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+ const L=sourceFor('left'),R=sourceFor('right');
+ const inXR=renderer.xr.isPresenting;
+ /* camera / rig orientation (desktop) */
+ if(!inXR){camera.position.set(0,1.6,0);camera.rotation.set(pitch,yaw,0,'YXZ')}
+ /* movement: WASD / left stick (in VR both sticks are used by the wheel while it is open) */
+ if(!(inXR&&wheelOpen)){const sx=inXR?L.stick[0]:(keys.KeyD?1:0)-(keys.KeyA?1:0);const sz=inXR?L.stick[1]:(keys.KeyS?1:0)-(keys.KeyW?1:0);
+  if(Math.abs(sx)>.12||Math.abs(sz)>.12){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();const right=new THREE.Vector3().crossVectors(fwd,new THREE.Vector3(0,1,0));
+   rig.position.addScaledVector(fwd,-sz*2.2*dt).addScaledVector(right,sx*2.2*dt);
+   rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
+ /* jump (space bar) */
+ if(jumpV!==0||rig.position.y>0){jumpV-=9.8*dt;rig.position.y+=jumpV*dt;if(rig.position.y<=0){rig.position.y=0;jumpV=0}}
+ /* avatar: follows head, walks (leg/arm swing), left hand follows your left controller (or the desktop hand holding the wheel) */
+ {worldPos(camera,tmpV);const prev=avatar.position.clone();avatar.position.set(tmpV.x,rig.position.y,tmpV.z);avatar.rotation.y=0;
+  if(dt>1e-4){const dv=avatar.position.clone().sub(prev);dv.y=0;vel.lerp(dv.divideScalar(dt),.2)}
+  const speed=vel.length(),amp=Math.min(1,speed/1.2);walkPhase+=speed*dt*4.2;
+  const wd=speed>.05?vel.clone().setY(0).normalize():new THREE.Vector3(0,0,1);
+  const P=avatar.userData.parts;const hip=new THREE.Vector3(0,.95,0),neck=new THREE.Vector3(0,1.48,0);
+  const sw=Math.sin(walkPhase)*.3*amp,lift=.09*amp;
+  /* body yaw follows where you face (smoothed) so shoulders/feet turn with you */
+  {const f=camera.getWorldDirection(new THREE.Vector3());if(Math.hypot(f.x,f.z)>.25){const target=Math.atan2(-f.x,-f.z);let df=target-bodyYaw;df=Math.atan2(Math.sin(df),Math.cos(df));bodyYaw+=df*Math.min(1,dt*8)}}
+  const bodyQ=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),bodyYaw);
+  const footL=new THREE.Vector3(-.12,Math.max(0,Math.cos(walkPhase))*lift,0).applyQuaternion(bodyQ).addScaledVector(wd,sw);
+  const footR=new THREE.Vector3(.12,Math.max(0,-Math.cos(walkPhase))*lift,0).applyQuaternion(bodyQ).addScaledVector(wd,-sw);
+  const shL=new THREE.Vector3(-.195,1.42,0).applyQuaternion(bodyQ),shR=new THREE.Vector3(.195,1.42,0).applyQuaternion(bodyQ);
+  const hipL=new THREE.Vector3(-.10,.95,0).applyQuaternion(bodyQ),hipR=new THREE.Vector3(.10,.95,0).applyQuaternion(bodyQ);
+  /* arms only ever follow your hands: controllers in VR (relaxed at-the-sides pose if a controller isn't tracked), and a still rest pose on desktop. No swing/bob of their own. */
+  let handLv,handRv;
+  const restL=new THREE.Vector3(-.25,.8,-.03).applyQuaternion(bodyQ),restR=new THREE.Vector3(.25,.8,-.03).applyQuaternion(bodyQ);
+  if(inXR){handLv=L.src?worldPos(ctrlHand.left,new THREE.Vector3()).sub(avatar.position):restL;handRv=R.src?worldPos(ctrlHand.right,new THREE.Vector3()).sub(avatar.position):restR;smL.copy(handLv);smR.copy(handRv)}
+  else{smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(restR,.2);handLv=smL.clone();handRv=smR.clone()}
+  const armL=solveArm(shL,handLv,new THREE.Vector3(-.5,-.4,.8).applyQuaternion(bodyQ));
+  const armR=solveArm(shR,handRv,new THREE.Vector3(.5,-.4,.8).applyQuaternion(bodyQ));
+  /* two-bone legs: knee pole points forward (-Z in body space) so knees bend the right way */
+  const fwdPole=new THREE.Vector3(0,.15,-1).applyQuaternion(bodyQ);
+  const legL=solveArm(hipL,footL.clone().setY(Math.max(footL.y,.04)),fwdPole,LEG1,LEG2);
+  const legR=solveArm(hipR,footR.clone().setY(Math.max(footR.y,.04)),fwdPole,LEG1,LEG2);
+  /* volumetric torso / pelvis / neck / head yaw with the body (geometry is in avatar-local coords) */
+  P.torso.quaternion.copy(bodyQ);P.pelvis.quaternion.copy(bodyQ);
+  P.neck.position.set(0,1.53,0).applyQuaternion(bodyQ);P.neck.quaternion.copy(bodyQ);
+  P.head.position.set(0,1.64,0).applyQuaternion(bodyQ);P.head.quaternion.copy(bodyQ);
+  setLimb(P.upL,shL,armL.el);setLimb(P.foreL,armL.el,armL.ha);setLimb(P.upR,shR,armR.el);setLimb(P.foreR,armR.el,armR.ha);
+  P.jShL.position.copy(shL);P.jShR.position.copy(shR);P.jElL.position.copy(armL.el);P.jElR.position.copy(armR.el);P.jHaL.position.copy(armL.ha);P.jHaR.position.copy(armR.ha);
+  P.jHaL.quaternion.copy(bodyQ);P.jHaR.quaternion.copy(bodyQ);
+  setLimb(P.thighL,hipL,legL.el);setLimb(P.shinL,legL.el,legL.ha);setLimb(P.thighR,hipR,legR.el);setLimb(P.shinR,legR.el,legR.ha);
+  P.jKnL.position.copy(legL.el);P.jKnR.position.copy(legR.el);
+  /* shoes sit on the solved ankle, toe pointing body-forward */
+  const fwdOff=new THREE.Vector3(0,0,-.045).applyQuaternion(bodyQ);
+  P.footL.position.copy(legL.ha).add(fwdOff);P.footL.position.y=Math.max(legL.ha.y-.01,.026);P.footL.quaternion.copy(bodyQ);
+  P.footR.position.copy(legR.ha).add(fwdOff);P.footR.position.y=Math.max(legR.ha.y-.01,.026);P.footR.quaternion.copy(bodyQ)}
+ /* controls. Index trigger on EITHER controller = emoji wheel (held in that hand). Index + middle-finger (grip) trigger together = voice.
+    Desktop: hold L for the wheel, hold V for voice. */
+ if(!listening)voiceHand=null;
+ if(inXR){
+  for(const h of['left','right']){const S=h==='left'?L:R,P=prevH[h];
+   const comboNow=S.trigger&&S.squeeze,comboRise=comboNow&&!(P.trigger&&P.squeeze);
+   /* voice: both triggers on one hand (if the wheel is open in that hand with nothing picked yet, voice takes over) */
+   if(comboRise&&!listening&&(!wheelOpen||(wheelHand===h&&!sequence.length))){if(wheelOpen)cancelWheel();startListening();if(listening)voiceHand=h}
+   /* wheel: index trigger alone */
+   else if(S.trigger&&!P.trigger&&!S.squeeze&&!wheelOpen&&!listening)openWheel(h);
+   if(wheelOpen&&wheelHand===h&&!S.trigger)closeWheelAndSend();
+   if(listening&&voiceHand===h&&!comboNow){releaseVoice();voiceHand=null}} /* letting go of either trigger sends */
+ }else{const trig=!!keys.KeyL;if(trig&&!wasTrigger)openWheel('desktop');if(!trig&&wasTrigger)closeWheelAndSend();wasTrigger=trig}
+ /* wheel placement: held in whichever hand opened it (VR controller / desktop hand low-left) */
+ if(wheelOpen){
+  let aim=null; /* where you are pointing, in wheel coordinates */
+  if(inXR){const wc=ctrlHand[wheelHand]||ctrlHand.left;wheel.scale.setScalar(.75);worldPos(wc,tmpV);const dir=new THREE.Vector3(0,0,-1).applyQuaternion(wc.getWorldQuaternion(new THREE.Quaternion()));
+   wheel.position.copy(tmpV).addScaledVector(dir,.14).add(new THREE.Vector3(0,.12,0));wheel.lookAt(worldPos(camera,tmpV2))}
+  else{const l=wheelLayout();wheel.scale.setScalar(l.sc);
+   wheel.position.copy(new THREE.Vector3(l.xOff,l.yOff,-WHEEL_D).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).add(worldPos(camera,tmpV)));
+   wheel.quaternion.copy(camera.getWorldQuaternion(new THREE.Quaternion()));
+   /* mouse cursor -> ball, measured from the wheel's own centre on screen */
+   aim=new THREE.Vector2((mouseN.x*l.halfW-l.xOff)/l.sc,(mouseN.y*l.halfH-l.yOff)/l.sc)}
+  wheel.updateMatrixWorld(true);
+  /* aim ball: the OTHER controller's ray onto the wheel plane (mouse on desktop) */
+  const aimHand=wheelHand==='left'?'right':'left';
+  if(inXR){wheel.getWorldDirection(tmpV3);_plane.setFromNormalAndCoplanarPoint(tmpV3,wheel.position);
+   const ro=worldPos(ctrlHand[aimHand],tmpV),rd=new THREE.Vector3(0,0,-1).applyQuaternion(ctrlHand[aimHand].getWorldQuaternion(new THREE.Quaternion()));
+   const ray=new THREE.Ray(ro,rd);if(ray.intersectPlane(_plane,_hit)){const local=wheel.worldToLocal(_hit.clone());aim=new THREE.Vector2(local.x,local.y)}}
+  /* flip pages: thumbstick left/right on the OTHER controller (the one not holding the wheel). One flick = one page; hold to keep flipping. */
+  if(inXR){const fx=(aimHand==='left'?L:R).stick[0];
+   if(Math.abs(fx)>.6){const d=Math.sign(fx);if(d!==stickDir){stickDir=d;stickRep=.5;setTab(tabIndex+d)}else{stickRep-=dt;if(stickRep<=0){stickRep=.28;setTab(tabIndex+d)}}}else stickDir=0}
+  /* magnet snap: push the ball toward the rim and the emoji in that direction wins (centre is a neutral zone) */
+  /* the ball rests in the centre. Two ways to move it:
+     • JOYSTICK on the hand holding the wheel: push it toward an emoji on the rim, then LET GO (it springs back) to pick.
+     • POINTER: aim your other controller at the ball, hold its trigger (desktop: mouse button) to grab, drag, RELEASE over an emoji to pick.
+     Releasing anywhere other than a rim emoji (or sliding off it first) just sends the ball home. */
+  const now=performance.now(),gp=inXR?(wheelHand==='right'?R:L).stick:[0,0],sMag=Math.hypot(gp[0],gp[1]),stickOn=sMag>.25;
+  const grab=inXR?(aimHand==='left'?L:R).trigger:mouseDown;
+  const hover=!!aim&&Math.hypot(aim.x-ballPos.x,aim.y-ballPos.y)<GRAB_R;
+  if(!ballHeld){
+   if(stickOn){ballHeld=true;viaStick=true}
+   else if(grab&&!wasGrab&&hover){ballHeld=true;viaStick=false;holdOff.set(ballPos.x-aim.x,ballPos.y-aim.y)}}
+  if(ballHeld){
+   if(viaStick){if(stickOn){const k=Math.min(1,sMag/.8)*WHEEL_R/sMag;ballTarget.set(gp[0]*k,-gp[1]*k)}else ballTarget.set(0,0)}
+   else if(aim)ballTarget.set(aim.x+holdOff.x,aim.y+holdOff.y)}
+  else ballTarget.set(0,0);
+  if(ballTarget.length()>WHEEL_R)ballTarget.setLength(WHEEL_R);
+  ballPos.lerp(ballTarget,ballHeld?.45:.25);let best=null;
+  if(ballHeld&&ballTarget.length()>OUTER){const tp=ballTarget.clone().setLength(RING_R);let bd=1e9;
+   for(const m of emojiMeshes){const p=m.userData.home;const d=Math.hypot(tp.x-p.x,tp.y-p.y);if(d<bd){bd=d;best=m}}}
+  if(best!==snapped)dwell=0;
+  snapped=best;
+  if(snapped){ballPos.lerp(new THREE.Vector2(snapped.userData.home.x,snapped.userData.home.y),.55);dwell+=dt}else dwell=0;
+  if(ballHeld){const holding=viaStick?stickOn:grab;
+   if(holding){armedPeg=(snapped&&dwell>=.1)?snapped:null;if(armedPeg){armedMem=armedPeg;armedMemT=now}}
+   else{ /* released. A thumbstick springs back through the middle in a few frames, so it counts if it was on a peg a moment ago */
+    const peg=viaStick?((armedMem&&now-armedMemT<180)?armedMem:null):armedPeg;
+    if(peg)selectEmoji(peg.userData.emoji);ballHeld=false;viaStick=false;armedPeg=null;armedMem=null}}
+  else armedPeg=null;
+  wasGrab=grab;
+  for(const m of emojiMeshes)m.scale.setScalar(m===armedPeg?1.55:(m===snapped?1.25+Math.sin(t*10)*.1:1));
+  ball.material.matcap=armedPeg?matGreen:matGold;ball.scale.setScalar(ballHeld?1.25:(hover?1.15:1));
+  ball.position.set(ballPos.x,ballPos.y,.034);updateArcs(dt,t,ballPos.x,ballPos.y);
+  }else{wasGrab=false;ballHeld=false;viaStick=false;armedPeg=null;armedMem=null}
+ prevH.left.trigger=L.trigger;prevH.left.squeeze=L.squeeze;prevH.right.trigger=R.trigger;prevH.right.squeeze=R.squeeze;
+ /* '...' above the head while waiting on Spark; sits above the newest message so they never overlap */
+ {const show=thinkingCount>0;dots.visible=show;
+  if(show){const hd=worldPos(camera,tmpV);let h=0;for(let k=overheadAnims.length-1;k>=0;k--){const o=overheadAnims[k];if(!o.leaving){h=o.yOff+Math.ceil(o.n/PER_ROW)*ROW_H;break}}
+   dots.position.set(hd.x,hd.y+.62+h,hd.z)}}
+ /* voice panel follows camera; hand-break check */
+ if(voicePanel.visible){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);
+  voicePanel.position.copy(worldPos(camera,tmpV)).addScaledVector(fwd,.95).add(new THREE.Vector3(0,.08,0));voicePanel.lookAt(worldPos(camera,tmpV2));
+  const hp=inXR?worldPos(ctrlHand[voiceHand==='left'?'right':'left'],tmpV3):null;
+  if(hp&&hp.distanceTo(voicePanel.position)<.22)breakSentence()}
+ /* overhead emoji: follow your head, stay up ~7s, older messages float up as new ones arrive */
+ {const head=worldPos(camera,tmpV);
+  for(let i=overheadAnims.length-1;i>=0;i--){const a=overheadAnims[i],el=performance.now()-a.start;
+   if(el>a.life){scene.remove(a.g);a.items.forEach(m=>{m.material.dispose()});overheadAnims.splice(i,1);continue}
+   let up=0;for(let k=i+1;k<overheadAnims.length;k++)if(!overheadAnims[k].leaving)up+=Math.ceil(overheadAnims[k].n/PER_ROW)*ROW_H+.05;a.yOff+=(up-a.yOff)*Math.min(1,dt*6);
+   a.g.position.set(head.x,head.y+.62+a.yOff,head.z);
+   const op=THREE.MathUtils.clamp((a.life-el)/a.fade,0,1);
+   a.items.forEach((m,j)=>{const lt=el-j*STAGGER;if(lt<0){m.visible=false;return}m.visible=true;
+    m.userData.sc=lt<180?THREE.MathUtils.mapLinear(lt,0,180,.01,1.15):(lt<320?THREE.MathUtils.mapLinear(lt,180,320,1.15,1):1);
+    m.material.opacity=op})}}
+ renderer.render(scene,camera);
+})}
+animate();
+</script>
+<script>
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  MANUAL CONFIG — PASTE YOUR META API KEY BETWEEN THE QUOTES BELOW ║
+   ║  so you don't have to type it in VR. If filled in, it is used     ║
+   ║  automatically on every load (it overrides the ⚙ settings key).   ║
+   ║  Leave endpoints/model empty to use the defaults.                 ║
+   ║  Don't share this file publicly once your key is in it.           ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+window.MANUAL_CONFIG={
+ META_API_KEY:'',      // <-- PASTE KEY HERE (Muse Voice Transcribe + Muse Spark)
+ TRANSCRIBE_URL:'',    // optional override
+ SPARK_URL:'',         // optional override
+ SPARK_MODEL:''        // optional override
+};
+</script>
+</body></html>
