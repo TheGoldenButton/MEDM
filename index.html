@@ -279,13 +279,15 @@ const makeStick=makeHuman; /* legacy alias */
 /* your avatar — seen in the mirror (and as a body below the headset in XR) */
 const avatar=makeHuman();scene.add(avatar);
 /* you see your own arms, torso and legs; the head/neck/hair are hidden from your own eyes and only drawn in the mirror */
-const _avP=avatar.userData.parts,_avHead=[_avP.head,_avP.neck,_avP.jNk],setHeadVis=v=>_avHead.forEach(o=>{o.visible=v});setHeadVis(false);
+const _avP=avatar.userData.parts,_avHead=[_avP.head,_avP.neck,_avP.jNk,_avP.torso,_avP.pelvis,_avP.upper],setHeadVis=v=>_avHead.forEach(o=>{o.visible=v});setHeadVis(false);
 /* hidden objects cast no shadow, so invisible 'ghost' copies (no colour/depth output, shadow-only) stand in for the head, neck and neck joint */
 const ghostMat=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false});
 const ghostHead=_avP.head.clone(true);ghostHead.traverse(o=>{if(o.isMesh){o.material=ghostMat;o.castShadow=true;o.receiveShadow=false}});
 const ghostNeck=new THREE.Mesh(_avP.neck.geometry,ghostMat);ghostNeck.castShadow=true;
 const ghostJNk=new THREE.Mesh(_avP.jNk.geometry,ghostMat);ghostJNk.castShadow=true;
-ghostHead.visible=ghostNeck.visible=ghostJNk.visible=true;avatar.add(ghostHead,ghostNeck,ghostJNk);
+const ghostTorso=new THREE.Mesh(_avP.torso.geometry,ghostMat),ghostPelvis=new THREE.Mesh(_avP.pelvis.geometry,ghostMat);ghostTorso.castShadow=ghostPelvis.castShadow=true;
+const ghostUpper=_avP.upper.clone(true);ghostUpper.traverse(o=>{if(o.isMesh){o.material=ghostMat;o.castShadow=true;o.receiveShadow=false}});
+ghostHead.visible=ghostNeck.visible=ghostJNk.visible=ghostUpper.visible=true;avatar.add(ghostHead,ghostNeck,ghostJNk,ghostTorso,ghostPelvis,ghostUpper);
 
 /* controllers / hands */
 const ctrlL=renderer.xr.getController(0),ctrlR=renderer.xr.getController(1);rig.add(ctrlL,ctrlR);
@@ -296,7 +298,7 @@ const ctrlHand={left:ctrlL,right:ctrlR};
 const handL=renderer.xr.getHand(0),handR=renderer.xr.getHand(1);rig.add(handL,handR);
 /* (no visible pointer rays — a small dot on the wheel shows where you're aiming) */
 function sourceFor(handedness){let found={pad:null,trigger:false,squeeze:false,aBtn:false,stick:[0,0],src:null};
- for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.squeezeV=gp.buttons[1]?.value||0;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}}return found}
+ for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.squeezeV=gp.buttons[1]?.value||0;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);found.aOnly=!!gp.buttons[4]?.pressed;const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}}return found}
 /* controller rumble: tries the standard hapticActuators API, then vibrationActuator */
 function haptic(h,val,ms){try{const gp=sourceFor(h).src?.gamepad;if(!gp)return;const a=gp.hapticActuators&&gp.hapticActuators[0];
  if(a&&a.pulse){a.pulse(val,ms);return}if(gp.vibrationActuator&&gp.vibrationActuator.playEffect)gp.vibrationActuator.playEffect('dual-rumble',{duration:ms,strongMagnitude:val,weakMagnitude:val})}catch(_){}}
@@ -572,7 +574,7 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 /* ============ MAIN LOOP ============ */
 const clock=new THREE.Clock();const tmpV=new THREE.Vector3(),tmpV2=new THREE.Vector3(),tmpV3=new THREE.Vector3();
 const _plane=new THREE.Plane(),_hit=new THREE.Vector3();
-let avSc=1,headTopY=1.8;
+let avSc=1,headTopY=1.8,standEye=0,dropS=0,prevA=false;
 const vel=new THREE.Vector3();let walkPhase=0,bodyYaw=0;const smL=new THREE.Vector3(-.2,.77,-.03),smR=new THREE.Vector3(.2,.77,-.03);
 /* two-bone arm IK: shoulder -> elbow -> hand, elbow bends toward a 'pole' direction (down / outward / back) */
 const ARM1=.33,ARM2=.33,LEG1=.46,LEG2=.46;
@@ -669,10 +671,15 @@ function animate(){renderer.setAnimationLoop(()=>{
   if(TURN_SNAP){if(Math.abs(tx)>.65){if(!turnLatch){turnLatch=true;turnRig(-Math.sign(tx)*SNAP_DEG*Math.PI/180)}}else if(Math.abs(tx)<.35)turnLatch=false}
   else if(Math.abs(tx)>.15)turnRig(-tx*SMOOTH_DEG*Math.PI/180*dt)}
  else turnLatch=true;
- /* jump (space bar) */
+ /* jump: A button on the right controller (space bar on desktop) */
+ if(inXR){if(R.aOnly&&!prevA&&rig.position.y<=.001&&jumpV===0)jumpV=3.4;prevA=!!R.aOnly}
  if(jumpV!==0||rig.position.y>0){jumpV-=9.8*dt;rig.position.y+=jumpV*dt;if(rig.position.y<=0){rig.position.y=0;jumpV=0}}
  /* scale the avatar to your real eye height (seated / short / tall) so its head — and the emoji stacked above it — sit where your head really is */
- {const eyeY=camera.position.y,tgt=(eyeY>.9)?THREE.MathUtils.clamp(eyeY/AV_EYE,.6,1.4):1;avSc+=(tgt-avSc)*Math.min(1,dt*3);avatar.scale.setScalar(avSc);headTopY=rig.position.y+eyeY+.17}
+ {const eyeY=camera.position.y;if(eyeY>.9)standEye=Math.max(standEye,eyeY);
+  const tgt=standEye>.9?THREE.MathUtils.clamp(standEye/AV_EYE,.6,1.4):1;avSc+=(tgt-avSc)*Math.min(1,dt*3);avatar.scale.setScalar(avSc);
+  /* squatting / crouching: the hips drop by how far your eyes are below your standing height, so the knees bend to match */
+  const dropW=(standEye>.9&&eyeY>.9)?THREE.MathUtils.clamp(standEye-eyeY,0,standEye*.6):0;dropS+=(dropW/avSc-dropS)*Math.min(1,dt*20);
+  headTopY=rig.position.y+eyeY+.17}
  /* avatar: follows head, walks (leg/arm swing), left hand follows your left controller (or the desktop hand holding the wheel) */
  {worldPos(camera,tmpV);const prev=avatar.position.clone();avatar.position.set(tmpV.x+Math.sin(bodyYaw)*.09*avSc,rig.position.y,tmpV.z+Math.cos(bodyYaw)*.09*avSc);avatar.rotation.y=0; /* body stands under the head centre, which is ~9cm behind the eyes */
   if(dt>1e-4){const dv=avatar.position.clone().sub(prev);dv.y=0;vel.lerp(dv.divideScalar(dt),.2)}
@@ -685,8 +692,8 @@ function animate(){renderer.setAnimationLoop(()=>{
   const bodyQ=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),bodyYaw);
   const footL=new THREE.Vector3(-.09,Math.max(0,Math.cos(walkPhase))*lift,0).applyQuaternion(bodyQ).addScaledVector(wd,sw);
   const footR=new THREE.Vector3(.09,Math.max(0,-Math.cos(walkPhase))*lift,0).applyQuaternion(bodyQ).addScaledVector(wd,-sw);
-  const shL=new THREE.Vector3(-.18,1.42,0).applyQuaternion(bodyQ),shR=new THREE.Vector3(.18,1.42,0).applyQuaternion(bodyQ);
-  const hipL=new THREE.Vector3(-.075,.95,0).applyQuaternion(bodyQ),hipR=new THREE.Vector3(.075,.95,0).applyQuaternion(bodyQ);
+  const shL=new THREE.Vector3(-.18,1.42-dropS,0).applyQuaternion(bodyQ),shR=new THREE.Vector3(.18,1.42-dropS,0).applyQuaternion(bodyQ);
+  const hipL=new THREE.Vector3(-.075,.95-dropS,0).applyQuaternion(bodyQ),hipR=new THREE.Vector3(.075,.95-dropS,0).applyQuaternion(bodyQ);
   /* arms only ever follow your hands: controllers in VR (relaxed at-the-sides pose if a controller isn't tracked), and a still rest pose on desktop. No swing/bob of their own. */
   const camQ=camera.getWorldQuaternion(new THREE.Quaternion());
   const restL=new THREE.Vector3(-.2,.77,-.03).applyQuaternion(bodyQ),restR=new THREE.Vector3(.2,.77,-.03).applyQuaternion(bodyQ),restQ=bodyQ.clone().multiply(_handDown);
@@ -706,9 +713,11 @@ function animate(){renderer.setAnimationLoop(()=>{
   const legR=solveArm(hipR,footR.clone().setY(Math.max(footR.y,.04)),fwdPole,LEG1,LEG2);
   /* volumetric torso / pelvis / neck / head yaw with the body (geometry is in avatar-local coords) */
   P.torso.quaternion.copy(bodyQ);P.pelvis.quaternion.copy(bodyQ);P.upper.quaternion.copy(bodyQ);
+  P.torso.position.y=P.pelvis.position.y=P.upper.position.y=-dropS;
+  ghostTorso.quaternion.copy(bodyQ);ghostPelvis.quaternion.copy(bodyQ);ghostUpper.quaternion.copy(bodyQ);ghostTorso.position.y=ghostPelvis.position.y=ghostUpper.position.y=-dropS;
   /* head = exactly the headset pose; the neck joint at the shoulders bends to meet it */
   const headC=worldPos(camera,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc).sub(new THREE.Vector3(0,.022,-.09).applyQuaternion(camQ));
-  const nBase=new THREE.Vector3(0,1.48,0),nTop=headC.clone().add(new THREE.Vector3(0,-.085,.015).applyQuaternion(camQ));
+  const nBase=new THREE.Vector3(0,1.48-dropS,0),nTop=headC.clone().add(new THREE.Vector3(0,-.085,.015).applyQuaternion(camQ));
   P.head.position.copy(headC);P.head.quaternion.copy(camQ);
   setLimb(P.neck,nBase,nTop);P.jNk.position.copy(nBase);
   ghostHead.position.copy(P.head.position);ghostHead.quaternion.copy(P.head.quaternion);ghostNeck.position.copy(P.neck.position);ghostNeck.quaternion.copy(P.neck.quaternion);ghostNeck.scale.copy(P.neck.scale);ghostJNk.position.copy(P.jNk.position);
