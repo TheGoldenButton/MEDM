@@ -25,7 +25,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#e9e9e7;font-family:sy
 <canvas id="c"></canvas>
 <button id="cog" title="Settings" aria-label="Settings">⚙️</button>
 <button id="help" title="Tips" aria-label="Tips">?</button>
-<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Press the <b>index trigger</b> on either controller (desktop: press <b>L</b>) to open the emoji wheel — it opens in that hand and stays open; press again to close it. The golden ball rests in the centre. Push the <b>thumbstick of the hand holding the wheel</b> toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Or point your <i>other</i> controller at the ball, hold its trigger (desktop: mouse button) and drag it there, then release. Let go anywhere else — or slide off first — and it returns to the centre. The <b>other controller's thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Closing the wheel sends your picks above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>). Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Right thumbstick</b> left/right turns you (snap turn, while the wheel is closed).<br><b>Search:</b> with the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and just type, Enter to search) — the Meta keyboard opens; results appear on wheel page 2. <b>Settings in VR:</b> point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). <b>Space</b> jumps (desktop).<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
+<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Press the <b>index trigger</b> on either controller (desktop: press <b>L</b>) to open the emoji wheel — it opens in that hand and stays open; press again to close it. The golden ball rests in the centre. Push the <b>thumbstick of the hand holding the wheel</b> toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Or point your <i>other</i> controller at the ball, hold its trigger (desktop: mouse button) and drag it there, then release. Let go anywhere else — or slide off first — and it returns to the centre. The <b>other controller's thumbstick forward/back</b> still walks you around. The other thumbstick <b>left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Closing the wheel sends your picks above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>). Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Right thumbstick</b> left/right turns you (snap turn, while the wheel is closed).<br><b>Search:</b> with the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and just type, Enter to search) — the Meta keyboard opens; results appear on wheel page 2. <b>Settings in VR:</b> point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). <b>Space</b> jumps (desktop).<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
 <button id="vrBtn">Enter VR</button>
 <div id="err"></div>
 <div id="modal"><div class="card"><h2 style="margin:0">Settings — Meta / Muse APIs</h2>
@@ -138,8 +138,10 @@ renderer.shadowMap.enabled=true;renderer.xr.enabled=true;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xe9e9e7);scene.fog=new THREE.Fog(0xe9e9e7,12,26);
 const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.05,60);
 const rig=new THREE.Group();rig.position.set(0,0,-2.6);scene.add(rig);rig.add(camera);camera.position.set(0,1.6,0);
-scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,1.1));
-const key=new THREE.DirectionalLight(0xffffff,1.6);key.position.set(3,5,3);key.castShadow=true;scene.add(key);
+scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,.75));
+/* shadows come from the two ceiling light panels (x=±2.5, y=3.95), shining down into the room */
+for(const x of[-2.5,2.5]){const sp=new THREE.SpotLight(0xffffff,1.1,0,Math.PI/2.6,.7,0);sp.position.set(x,3.9,0);sp.target.position.set(x*.6,0,0);scene.add(sp,sp.target);
+ sp.castShadow=true;sp.shadow.mapSize.set(2048,2048);sp.shadow.camera.near=.5;sp.shadow.camera.far=8;sp.shadow.bias=-.0004;sp.shadow.normalBias=.02;sp.shadow.radius=4}
 const pmrem=new THREE.PMREMGenerator(renderer);
 
 /* blank room */
@@ -158,11 +160,11 @@ mirror.position.set(0,1.55,-4.94);scene.add(mirror);
 let inMirror=false;
 /* the wheel is also turned to face the reflection camera (and pre-flipped) so it reads properly in the mirror */
 {const _mob=mirror.onBeforeRender;mirror.onBeforeRender=function(...a){
-  inMirror=true;avatar.visible=true;const _uiv=ui.visible;ui.visible=false;let flipped=false,sq,ssx;
+  inMirror=true;setHeadVis(true);const _uiv=ui.visible;ui.visible=false;let flipped=false,sq,ssx;
   if(wheel.visible){flipped=true;sq=wheel.quaternion.clone();ssx=wheel.scale.x;
    const vp=new THREE.Vector3().setFromMatrixPosition(a[2].matrixWorld);vp.z=2*mirror.position.z-vp.z;
    wheel.lookAt(vp);wheel.scale.x=-ssx;wheel.updateMatrixWorld(true)}
-  try{_mob.apply(this,a)}finally{inMirror=false;avatar.visible=false;ui.visible=_uiv;if(flipped){wheel.quaternion.copy(sq);wheel.scale.x=ssx;wheel.updateMatrixWorld(true)}}}}
+  try{_mob.apply(this,a)}finally{inMirror=false;setHeadVis(false);ui.visible=_uiv;if(flipped){wheel.quaternion.copy(sq);wheel.scale.x=ssx;wheel.updateMatrixWorld(true)}}}}
 {const f=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.8,.08),new THREE.MeshStandardMaterial({color:0x222222,roughness:.4,metalness:.6}));f.position.set(0,1.55,-4.99);scene.add(f);}
 
 /* ============ HELPERS ============ */
@@ -275,7 +277,15 @@ function makeHuman(){
  g.userData.parts=parts;return g}
 const makeStick=makeHuman; /* legacy alias */
 /* your avatar — seen in the mirror (and as a body below the headset in XR) */
-const avatar=makeHuman();avatar.visible=false;scene.add(avatar); /* only shown during the mirror's render pass, so you never see your own body */
+const avatar=makeHuman();scene.add(avatar);
+/* you see your own arms, torso and legs; the head/neck/hair are hidden from your own eyes and only drawn in the mirror */
+const _avP=avatar.userData.parts,_avHead=[_avP.head,_avP.neck,_avP.jNk],setHeadVis=v=>_avHead.forEach(o=>{o.visible=v});setHeadVis(false);
+/* hidden objects cast no shadow, so invisible 'ghost' copies (no colour/depth output, shadow-only) stand in for the head, neck and neck joint */
+const ghostMat=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false});
+const ghostHead=_avP.head.clone(true);ghostHead.traverse(o=>{if(o.isMesh){o.material=ghostMat;o.castShadow=true;o.receiveShadow=false}});
+const ghostNeck=new THREE.Mesh(_avP.neck.geometry,ghostMat);ghostNeck.castShadow=true;
+const ghostJNk=new THREE.Mesh(_avP.jNk.geometry,ghostMat);ghostJNk.castShadow=true;
+ghostHead.visible=ghostNeck.visible=ghostJNk.visible=true;avatar.add(ghostHead,ghostNeck,ghostJNk);
 
 /* controllers / hands */
 const ctrlL=renderer.xr.getController(0),ctrlR=renderer.xr.getController(1);rig.add(ctrlL,ctrlR);
@@ -284,9 +294,9 @@ const ctrlHand={left:ctrlL,right:ctrlR};
  if(cs[0].userData.h==='right'||cs[1].userData.h==='left'){ctrlHand.left=cs[1];ctrlHand.right=cs[0]}
  else if(cs[0].userData.h==='left'||cs[1].userData.h==='right'){ctrlHand.left=cs[0];ctrlHand.right=cs[1]}}))}
 const handL=renderer.xr.getHand(0),handR=renderer.xr.getHand(1);rig.add(handL,handR);
-for(const c of[ctrlL,ctrlR]){const ray=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.7,6),new THREE.MeshBasicMaterial({color:0xffc400}));ray.position.z=-.35;ray.rotation.x=Math.PI/2;c.add(ray);c.userData.ray=ray}
+/* (no visible pointer rays — a small dot on the wheel shows where you're aiming) */
 function sourceFor(handedness){let found={pad:null,trigger:false,squeeze:false,aBtn:false,stick:[0,0],src:null};
- for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}}return found}
+ for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.squeezeV=gp.buttons[1]?.value||0;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}}return found}
 /* controller rumble: tries the standard hapticActuators API, then vibrationActuator */
 function haptic(h,val,ms){try{const gp=sourceFor(h).src?.gamepad;if(!gp)return;const a=gp.hapticActuators&&gp.hapticActuators[0];
  if(a&&a.pulse){a.pulse(val,ms);return}if(gp.vibrationActuator&&gp.vibrationActuator.playEffect)gp.vibrationActuator.playEffect('dual-rumble',{duration:ms,strongMagnitude:val,weakMagnitude:val})}catch(_){}}
@@ -297,9 +307,13 @@ const wheel=new THREE.Group();wheel.visible=false;scene.add(wheel);
 const disc=new THREE.Mesh(new THREE.CircleGeometry(.38,64),new THREE.MeshStandardMaterial({color:0x14161c,transparent:true,opacity:.92,roughness:.4,side:THREE.DoubleSide}));wheel.add(disc);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(.38,.007,8,96),new THREE.MeshBasicMaterial({color:0xffd34d}));wheel.add(ring);
 function matcap(c0,c1,c2){const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d');const gr=g.createRadialGradient(92,84,8,128,128,128);gr.addColorStop(0,'#ffffff');gr.addColorStop(.16,c0);gr.addColorStop(.68,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,256,256);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t}
-const matGold=matcap('#ffe27a','#f5a800','#7a3f00'),matGreen=matcap('#d6ffe6','#2fe08a','#075c33');
+const matGold=matcap('#ffe27a','#f5a800','#7a3f00'),matFlash=matcap('#fffbe6','#ffd84a','#d98a00');
 const ball=new THREE.Mesh(new THREE.SphereGeometry(.03,48,32),new THREE.MeshMatcapMaterial({matcap:matGold}));
 ball.position.z=.025;wheel.add(ball);
+/* soft contact shadow + aim dot, to make the ball read as 3D */
+const ballShadow=new THREE.Mesh(new THREE.CircleGeometry(.03,32),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.3,depthWrite:false}));ballShadow.position.z=.016;ballShadow.renderOrder=1;wheel.add(ballShadow);
+const aimDot=new THREE.Mesh(new THREE.CircleGeometry(.007,20),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.75,depthTest:false}));aimDot.renderOrder=5;aimDot.visible=false;wheel.add(aimDot);
+let ballDepth=0,flashT=0,deskDepth=.5;
 /* electrical charge: a crackling arc from the centre of the wheel to the golden ball (no light under the ball) */
 const ARC_N=16,ARC_AMP=[.016,.03,.045];
 function makeArc(color,op){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array((ARC_N+1)*3),3));
@@ -532,7 +546,9 @@ addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;ke
  if(e.code==='Space'){e.preventDefault();if(!e.repeat&&rig.position.y<=.001&&jumpV===0)jumpV=3.4}if(wheelOpen&&e.code==='ArrowLeft')setTab(tabIndex-1);if(wheelOpen&&e.code==='ArrowRight')setTab(tabIndex+1);if(e.code==='KeyQ')setTab(tabIndex-1);if(e.code==='KeyE')setTab(tabIndex+1);if(e.code==='KeyV'&&!e.repeat)startListening();if(e.code==='Escape')breakSentence()});
 addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyL')kbHeldL=false;if(e.code==='KeyV')releaseVoice()});
 let yaw=0,pitch=0,dragging=false,lx=0,ly=0;
-canvas.addEventListener('pointerdown',e=>{if(wheelOpen&&wheelHand==='desktop'){mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1));if(searchOver(mouseN)){startSearch('desktop');return}mouseDown=true;return}dragging=true;lx=e.clientX;ly=e.clientY});
+canvas.addEventListener('pointerdown',e=>{if(wheelOpen&&wheelHand==='desktop'){mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1));if(searchOver(mouseN)){startSearch('desktop');return}
+  {const l=wheelLayout(),ax=(mouseN.x*l.halfW-l.xOff)/l.sc,ay=(mouseN.y*l.halfH-l.yOff)/l.sc;if(Math.hypot(ax,ay)>WHEEL_R+.04){closeWheelAndSend();return}} /* click outside the wheel = close + send */
+  mouseDown=true;return}dragging=true;lx=e.clientX;ly=e.clientY});
 addEventListener('pointerup',()=>{dragging=false;mouseDown=false});
 addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=(e.clientX-lx)*.003;pitch=THREE.MathUtils.clamp(pitch-(e.clientY-ly)*.003,-1.2,1.2);lx=e.clientX;ly=e.clientY}
  mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1))});
@@ -645,6 +661,9 @@ function animate(){renderer.setAnimationLoop(()=>{
   if(Math.abs(sx)>.12||Math.abs(sz)>.12){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();const right=new THREE.Vector3().crossVectors(fwd,new THREE.Vector3(0,1,0));
    rig.position.addScaledVector(fwd,-sz*2.2*dt).addScaledVector(right,sx*2.2*dt);
    rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
+ else if(inXR&&wheelHand!=='desktop'){ /* wheel open: the OTHER controller's stick pushed forward/back still walks you around */
+  const st=(wheelHand==='left'?R:L).stick;if(Math.abs(st[1])>.25&&Math.abs(st[1])>Math.abs(st[0])*.8){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();rig.position.addScaledVector(fwd,-st[1]*2.2*dt);
+   rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
  /* right thumbstick = turn (snap turn by default). Off while the wheel is open, since the sticks drive the wheel then. */
  if(inXR&&!wheelOpen){const tx=R.stick[0];
   if(TURN_SNAP){if(Math.abs(tx)>.65){if(!turnLatch){turnLatch=true;turnRig(-Math.sign(tx)*SNAP_DEG*Math.PI/180)}}else if(Math.abs(tx)<.35)turnLatch=false}
@@ -692,6 +711,7 @@ function animate(){renderer.setAnimationLoop(()=>{
   const nBase=new THREE.Vector3(0,1.48,0),nTop=headC.clone().add(new THREE.Vector3(0,-.085,.015).applyQuaternion(camQ));
   P.head.position.copy(headC);P.head.quaternion.copy(camQ);
   setLimb(P.neck,nBase,nTop);P.jNk.position.copy(nBase);
+  ghostHead.position.copy(P.head.position);ghostHead.quaternion.copy(P.head.quaternion);ghostNeck.position.copy(P.neck.position);ghostNeck.quaternion.copy(P.neck.quaternion);ghostNeck.scale.copy(P.neck.scale);ghostJNk.position.copy(P.jNk.position);
   setLimb(P.upL,shL,armL.el);setLimb(P.foreL,armL.el,armL.ha);setLimb(P.upR,shR,armR.el);setLimb(P.foreR,armR.el,armR.ha);
   P.jShL.position.copy(shL);P.jShR.position.copy(shR);P.jElL.position.copy(armL.el);P.jElR.position.copy(armR.el);P.jWrL.position.copy(armL.ha);P.jWrR.position.copy(armR.ha);
   const hOff=new THREE.Vector3(0,0,-.062);
@@ -746,8 +766,8 @@ function animate(){renderer.setAnimationLoop(()=>{
    const ro=worldPos(ctrlHand[aimHand],tmpV),rd=new THREE.Vector3(0,0,-1).applyQuaternion(ctrlHand[aimHand].getWorldQuaternion(new THREE.Quaternion()));
    const ray=new THREE.Ray(ro,rd);if(ray.intersectPlane(_plane,_hit)){const local=wheel.worldToLocal(_hit.clone());aim=new THREE.Vector2(local.x,local.y)}}
   /* flip pages: thumbstick left/right on the OTHER controller (the one not holding the wheel). One flick = one page; hold to keep flipping. */
-  if(inXR){const fx=(aimHand==='left'?L:R).stick[0];
-   if(Math.abs(fx)>.6){const d=Math.sign(fx);if(d!==stickDir){stickDir=d;stickRep=.5;setTab(tabIndex+d)}else{stickRep-=dt;if(stickRep<=0){stickRep=.28;setTab(tabIndex+d)}}}else stickDir=0}
+  if(inXR){const fst=(aimHand==='left'?L:R).stick,fx=fst[0];
+   if(Math.abs(fx)>.6&&Math.abs(fx)>Math.abs(fst[1])){const d=Math.sign(fx);if(d!==stickDir){stickDir=d;stickRep=.5;setTab(tabIndex+d)}else{stickRep-=dt;if(stickRep<=0){stickRep=.28;setTab(tabIndex+d)}}}else stickDir=0}
   /* magnet snap: push the ball toward the rim and the emoji in that direction wins (centre is a neutral zone) */
   /* the ball rests in the centre. Two ways to move it:
      • JOYSTICK on the hand holding the wheel: push it toward an emoji on the rim, then LET GO (it springs back) to pick.
@@ -760,6 +780,7 @@ function animate(){renderer.setAnimationLoop(()=>{
   searchHotHand=sHot?(inXR?aimHand:'desktop'):null;
   if(sHot){const rm=inXR&&ctrlHand[aimHand]&&ctrlHand[aimHand].userData.ray;if(rm)rm.material.color.setHex(0x34e08a);
    if(grab&&!wasGrab&&!(inXR&&uiPressed[aimHand]))startSearch(inXR?aimHand:'desktop')} /* fallback; normally the 'selectstart' event handles it */
+  if(inXR&&grab&&!wasGrab&&!ballHeld&&!sHot&&!kb&&aim&&Math.hypot(aim.x,aim.y)>WHEEL_R+.04){closeWheelAndSend();haptic(aimHand,.5,40)} /* trigger pressed outside the wheel = close + send */
   if(sHot&&!prevHot&&inXR)haptic(aimHand,.25,20);prevHot=sHot;
   searchBtn.userData.draw(kb&&kb.kind==='search'?xrInput.value:searchQuery,!!(kb&&kb.kind==='search'),sHot);
   if(!ballHeld){
@@ -783,7 +804,7 @@ function animate(){renderer.setAnimationLoop(()=>{
     const peg=viaStick?((armedMem&&now-armedMemT<180)?armedMem:null):armedPeg;
     if(peg)selectEmoji(peg.userData.emoji);ballHeld=false;viaStick=false;armedPeg=null;armedMem=null}}
   else armedPeg=null;
-  /* haptics while you pull the ball: a rumble that grows the further out you drag it, a tick on each new emoji peg, a firm thump when it locks on (green) */
+  /* haptics while you pull the ball: a rumble that grows the further out you drag it, a tick on each new emoji peg, a firm thump when it locks on (bright gold flash) */
   if(inXR&&ballHeld){hapHand=viaStick?wheelHand:aimHand;
    hapAcc-=dt;if(hapAcc<=0){hapAcc=.045;haptic(hapHand,.12+.4*Math.min(1,ballPos.length()/WHEEL_R),60)}
    if(snapped&&snapped!==prevSnapPeg)haptic(hapHand,.65,30);
@@ -791,8 +812,14 @@ function animate(){renderer.setAnimationLoop(()=>{
   prevSnapPeg=snapped;wasArmedPeg=!!armedPeg;
   wasGrab=grab;
   for(const m of emojiMeshes)m.scale.setScalar(m===armedPeg?1.55:(m===snapped?1.25+Math.sin(t*10)*.1:1));
-  ball.material.matcap=armedPeg?matGreen:matGold;ball.scale.setScalar(ballHeld?1.25:(hover?1.15:1));
-  ball.position.set(ballPos.x,ballPos.y,.034);updateArcs(dt,t,ballPos.x,ballPos.y);
+  if(armedPeg&&!wasArmedPeg)flashT=.22;flashT=Math.max(0,flashT-dt);
+  ball.material.matcap=armedPeg?matFlash:matGold;ball.material.color.setScalar(1+(flashT/.22)*1.1);
+  /* pull the ball toward you: squeeze the grip of the pointing controller (desktop: scroll wheel); it lifts off the wheel, grows and casts a shadow */
+  {const sc=ballHeld?1.25:(hover?1.15:1);ball.scale.setScalar(sc);
+   ball.position.set(ballPos.x,ballPos.y,.034);
+   ballShadow.position.set(ballPos.x,ballPos.y,.016);ballShadow.scale.setScalar(1);ballShadow.material.opacity=.32;
+   aimDot.visible=!!aim&&!ballHeld;if(aim)aimDot.position.set(aim.x,aim.y,.04)}
+  updateArcs(dt,t,ballPos.x,ballPos.y);
   }else{wasGrab=false;ballHeld=false;viaStick=false;armedPeg=null;armedMem=null}
  prevH.left.trigger=L.trigger;prevH.left.squeeze=L.squeeze;prevH.right.trigger=R.trigger;prevH.right.squeeze=R.squeeze;
  /* '...' above the head while waiting on Spark; sits above the newest message so they never overlap */
