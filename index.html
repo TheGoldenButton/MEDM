@@ -27,7 +27,7 @@ body.ar-on #c{background:transparent}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head><body>
-<video id="arCam" autoplay playsinline muted></video><canvas id="c"></canvas>
+<video id="arCam" autoplay playsinline muted></video><video id="arSnap" autoplay playsinline muted style="position:fixed;left:0;bottom:0;width:8px;height:8px;opacity:.02;pointer-events:none;z-index:-1"></video><canvas id="c"></canvas>
 <div id="dptr"></div>
 <button id="cog" title="Settings" aria-label="Settings">⚙️</button>
 <button id="help" title="Tips" aria-label="Tips">?</button>
@@ -570,7 +570,8 @@ async function sparkAsk(text,shot){
  console.warn('[Muse Spark Ask] fallback:',why);
  return{seq:localTranslate(text),via:'local',why}}
 async function finishAsk(said,shot){
- if(arMode&&!shot){showErr('AR: could not get a camera frame, so Spark is answering from your words only. Make sure camera access was allowed (Quest: Browser permissions → camera) and re-enter AR.')}
+ if(arMode&&!shot){const m='No camera image — Spark is answering from your words only. '+(arSnapErr?'Camera: '+arSnapErr+'. ':'')+'Allow camera for this site (Quest Browser: lock icon → Permissions), then tap 📷 AR Mode again.';showErr(m);try{vrToast('⚠️ No camera view',m.slice(0,110))}catch(_){}}
+ else if(arMode&&shot){try{vrToast('📷 Camera view sent','Spark can see what you see.')}catch(_){}}
  fairyThink();setStatus('Asking Spark 🧚… "'+said+'"'+(arMode&&shot?' (with camera view)':''));
  let res;thinkingCount++;try{res=await sparkAsk(said,shot)}finally{thinkingCount--}
  if(res.via==='local'){showErr('Spark Ask failed, so the crude local fallback was used. Reason: '+res.why);setStatus('⚠️ LOCAL fallback (not Spark) answering "'+said+'": '+res.seq.join(' '))}
@@ -811,16 +812,17 @@ function closeWheelAndSend(){if(!wheelOpen)return;startClose();wheelLatched=fals
 
 function applyARMode(on){arMode=!!on;document.body.classList.toggle('ar-on',arMode);const b=$('arBtn');b.classList.toggle('ar-on',arMode);b.textContent=arMode?'📷 AR On — tap to exit':'📷 AR Mode';
  scene.background=arMode?null:new THREE.Color(0xe9e9e7);scene.fog=arMode?null:new THREE.Fog(0xe9e9e7,12,26);renderer.setClearColor(0x000000,arMode?0:1);
- for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
+ for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){stopSnapCam();v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
  setStatus(arMode?'📷 AR mode — real world via headset cameras. Hold the trigger (wheel closed) and ask Spark about what you see.':'VR mode — back in the virtual room.')}
 async function enterXR(kind){if(!navigator.xr){
    if(kind==='ar'){if(arMode){applyARMode(false);return true}try{arCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});const v=$('arCam');v.srcObject=arCamStream;v.style.display='block';applyARMode(true);return true}catch(e){setStatus('AR needs a headset (or camera permission): '+e.message)}return false}
    setStatus('WebXR not available in this browser — desktop preview still works.');return false}
  try{const mode=kind==='ar'?'immersive-ar':'immersive-vr';const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
+  let gotCam=false;if(kind==='ar')gotCam=await startSnapCam();
   const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access']});
   renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0);
   session.addEventListener('end',()=>{applyARMode(false);$('vrBtn').textContent='Enter VR'});
-  await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message);return false}}
+  await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message+(kind==='ar'&&arSnapStream?' — camera was just allowed; tap 📷 AR Mode once more.':''));return false}}
 let xrSwitching=false;
 async function toggleAR(){if(xrSwitching)return;xrSwitching=true;
  try{
@@ -1179,7 +1181,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
  renderer.render(scene,camera);
 })}
 
-let shotReq=null;const SHOT_W=768,SHOT_H=512,shotRT=new THREE.WebGLRenderTarget(SHOT_W,SHOT_H,{samples:4});shotRT.texture.colorSpace=THREE.SRGBColorSpace;
+let shotReq=null;const SHOT_W=1024,SHOT_H=768,shotRT=new THREE.WebGLRenderTarget(SHOT_W,SHOT_H,{samples:4});shotRT.texture.colorSpace=THREE.SRGBColorSpace;
 const shotCam=new THREE.PerspectiveCamera(75,SHOT_W/SHOT_H,.05,60),shotBuf=new Uint8Array(SHOT_W*SHOT_H*4),shotCv=document.createElement('canvas');shotCv.width=SHOT_W;shotCv.height=SHOT_H;
 function requestSceneShot(){return new Promise(res=>{shotReq=res;setTimeout(()=>{if(shotReq===res){shotReq=null;res(null)}},1500)})}
 
@@ -1196,10 +1198,24 @@ function capturePassthroughShot(){try{
    gl.bindFramebuffer(gl.FRAMEBUFFER,prevFb);gl.deleteFramebuffer(fb);
    const cv=document.createElement('canvas');cv.width=SHOT_W;cv.height=SHOT_H;const g=cv.getContext('2d'),img=g.createImageData(w,h);img.data.set(px);const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').putImageData(img,0,0);const sc=Math.max(SHOT_W/w,SHOT_H/h),dw=w*sc,dh=h*sc;g.save();g.translate(0,SHOT_H);g.scale(1,-1);g.drawImage(tmp,(SHOT_W-dw)/2,(SHOT_H-dh)/2,dw,dh);g.restore();
    if(isBlankShot(g))continue;
-   return cv.toDataURL('image/jpeg',.72)}
+   return cv.toDataURL('image/jpeg',.82)}
   return null}catch(e){console.warn('[passthrough shot]',e);return null}}
 function isBlankShot(g){try{const d=g.getImageData(0,0,SHOT_W,SHOT_H).data;let sum=0,n=0;for(let i=0;i<d.length;i+=4*97){sum+=d[i]+d[i+1]+d[i+2];n++}return sum/n<3}catch(_){return false}}
-function captureVideoShot(){try{const v=$('arCam');if(!v||!v.videoWidth||v.style.display==='none')return null;const w=v.videoWidth,h=v.videoHeight,sc=Math.max(SHOT_W/w,SHOT_H/h),dw=w*sc,dh=h*sc,g=shotCv.getContext('2d');g.drawImage(v,(SHOT_W-dw)/2,(SHOT_H-dh)/2,dw,dh);return shotCv.toDataURL('image/jpeg',.72)}catch(e){console.warn('[video shot]',e);return null}}
+let arSnapStream=null,arSnapErr='';
+async function startSnapCam(){
+ if(arSnapStream&&arSnapStream.getVideoTracks().some(t=>t.readyState==='live'))return true;
+ try{if(!navigator.mediaDevices?.getUserMedia){arSnapErr='no camera API in this browser';return false}
+  const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:960}},audio:false});
+  arSnapStream=st;const v=$('arSnap');v.srcObject=st;try{await v.play()}catch(_){}arSnapErr='';return true}
+ catch(e){arSnapErr=(e&&e.name?e.name+': ':'')+(e&&e.message||e);console.warn('[snap cam]',e);return false}}
+function stopSnapCam(){if(arSnapStream){arSnapStream.getTracks().forEach(t=>t.stop());arSnapStream=null}const v=$('arSnap');if(v)v.srcObject=null}
+const VID_MAX=1280;
+function captureVideoShot(){try{
+ for(const id of['arSnap','arCam']){const v=$(id);if(!v||!v.srcObject||!v.videoWidth||v.readyState<2)continue;
+  const w=v.videoWidth,h=v.videoHeight,k=Math.min(1,VID_MAX/Math.max(w,h)),cv=document.createElement('canvas');cv.width=Math.round(w*k);cv.height=Math.round(h*k);
+  const g=cv.getContext('2d');g.drawImage(v,0,0,cv.width,cv.height);if(isBlankVid(g,cv.width,cv.height))continue;return cv.toDataURL('image/jpeg',.82)}
+ return null}catch(e){console.warn('[video shot]',e);return null}}
+function isBlankVid(g,w,h){try{const d=g.getImageData(0,0,w,h).data;let sum=0,n=0;for(let i=0;i<d.length;i+=4*211){sum+=d[i]+d[i+1]+d[i+2];n++}return sum/n<3}catch(_){return false}}
 function captureSceneShot(){
  camera.updateWorldMatrix(true,false);camera.getWorldPosition(shotCam.position);camera.getWorldQuaternion(shotCam.quaternion);shotCam.updateMatrixWorld(true);
  const hide=[wheel,ui,voicePanel,fairy,fairyAnswer,orb,ptrBalls.left,ptrBalls.right,ptrBalls.desktop,...overheadAnims.map(a=>a.g)],was=hide.map(o=>o.visible);hide.forEach(o=>o.visible=false);
