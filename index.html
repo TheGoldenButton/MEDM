@@ -31,7 +31,7 @@ body.ar-on #c{background:transparent}
 <div id="dptr"></div>
 <button id="cog" title="Settings" aria-label="Settings">⚙️</button>
 <button id="help" title="Tips" aria-label="Tips">?</button>
-<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Press the <b>index trigger</b> on either controller (desktop: press <b>L</b>) to open the emoji wheel — it opens in that hand and stays open; press again to close it. The golden ball rests in the centre. Push the <b>thumbstick of the hand holding the wheel</b> toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Or point your <i>other</i> controller at the ball, hold its trigger (desktop: mouse button) and drag it there, then release. Let go anywhere else — or slide off first — and it returns to the centre. The <b>other controller's thumbstick forward/back</b> still walks you around. The other thumbstick <b>left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Closing the wheel sends your picks above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>) to <b>translate</b> into emoji. Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Ask Spark 🧚:</b> with the wheel <b>closed</b>, <b>hold the index trigger on its own</b> (desktop: hold <b>L</b>) — keep holding, speak your question, then let go. A quick tap still opens the wheel. A ball of light forms in front of you while you speak; when Spark has an answer, the fairy emerges from it and hovers a little way back so she stays in view, answering in emoji (it does <i>not</i> translate — it answers, using what you are looking at).<br><b>AR Mode 📷:</b> tap <b>AR Mode</b> at the top (or the 📷 button in-headset) to switch to headset-camera passthrough — the VR room disappears, the real world is used as the scene, and Ask Spark / voice use that real-world view to infer what you mean.<br><b>Right thumbstick</b> left/right turns you (snap turn, while the wheel is closed).<br><b>Search:</b> with the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and just type, Enter to search) — the Meta keyboard opens; results appear on wheel page 2. <b>Settings in VR:</b> point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). <b>A</b> (right controller) / <b>Space</b> (desktop) jumps. <b>B / Y</b> closes the wheel without sending. With hand tracking, pinch index = trigger, pinch middle finger = grip. On desktop your right arm points wherever the mouse cursor points.<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
+<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Press the <b>index trigger</b> on either controller (desktop: press <b>L</b>) to open the emoji wheel — it opens in that hand and stays open; press again to close it. The golden ball rests in the centre. Point your <i>other</i> controller at the golden ball, hold its trigger (desktop: mouse button) and drag it toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Let go anywhere else — or slide off first — and it returns to the centre. The <b>left thumbstick</b> always walks you around (it does not move the ball), even while the wheel is open. The <b>right thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Closing the wheel sends your picks above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>) to <b>translate</b> into emoji. Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Translate vs Ask:</b> <b>wheel open + hold the wheel hand's trigger</b> (desktop: hold <b>L</b>), or <b>index + grip together</b> with the wheel closed, = <b>translate</b> into emoji. <b>Wheel closed + hold the index trigger alone</b> = <b>Ask Spark</b> (a direct question, not a translation; in AR it is sent the headset-camera view).<br><b>Ask Spark 🧚:</b> with the wheel <b>closed</b>, <b>hold the index trigger on its own</b> (desktop: hold <b>L</b>) — keep holding, speak your question, then let go. A quick tap still opens the wheel. A ball of light forms in front of you while you speak; when Spark has an answer, the fairy emerges from it and hovers a little way back so she stays in view, answering in emoji (it does <i>not</i> translate — it answers, using what you are looking at).<br><b>AR Mode 📷:</b> tap <b>AR Mode</b> at the top (or the 📷 button in-headset) to switch to headset-camera passthrough — the VR room disappears, the real world is used as the scene, and Ask Spark / voice use that real-world view to infer what you mean.<br><b>Right thumbstick</b> left/right turns you (snap turn, while the wheel is closed).<br><b>Search:</b> with the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and just type, Enter to search) — the Meta keyboard opens; results appear on wheel page 2. <b>Settings in VR:</b> point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). <b>A</b> (right controller) / <b>Space</b> (desktop) jumps. <b>B / Y</b> closes the wheel without sending. With hand tracking, pinch index = trigger, pinch middle finger = grip. On desktop your right arm points wherever the mouse cursor points.<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
 <button id="arBtn" title="AR mode — use headset cameras (passthrough) instead of the VR room">📷 AR Mode</button>
 <button id="vrBtn">Enter VR</button>
 <div id="err"></div>
@@ -275,7 +275,7 @@ const makeStick=makeHuman;
 
 const avatar=makeHuman();scene.add(avatar);
 
-const _avP=avatar.userData.parts,_avHead=[_avP.head,_avP.neck,_avP.jNk,_avP.torso,_avP.pelvis,_avP.upper],setHeadVis=v=>_avHead.forEach(o=>{o.visible=v});setHeadVis(false);
+const _avP=avatar.userData.parts,_avHead=[_avP.head],setHeadVis=v=>_avHead.forEach(o=>{o.visible=v});setHeadVis(false);
 
 const ghostMat=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false});
 const ghostHead=_avP.head.clone(true);ghostHead.traverse(o=>{if(o.isMesh){o.material=ghostMat;o.castShadow=true;o.receiveShadow=false}});
@@ -487,7 +487,7 @@ function uiButton(label,x){const cv=document.createElement('canvas');cv.width=cv
 uiButton('⚙️',-.32);uiButton('📷',0);uiButton('?',.32);
 const helpPanel=textPanel(1.0,.68,1000,680,2),cogPanel=textPanel(1.0,.68,1000,680,2);
 for(const p of[helpPanel,cogPanel]){p.visible=false;p.position.set(0,.02,-.95);p.renderOrder=998;p.material.depthTest=false;ui.add(p)}
-helpPanel.userData.draw('? Tips','Tap index trigger = open / close the emoji wheel. HOLD index trigger alone (wheel closed) = Ask Spark: speak a question, release, a ball of light forms in front of you and the 🧚 fairy emerges from it to answer in emoji. 📷 at the top = AR passthrough mode (real world via headset cameras). Index trigger on either controller = open / close the emoji wheel. Push the thumbstick of that hand toward an emoji on the rim and let go to pick (or grab the ball with your other pointer). Other thumbstick left/right = pages. Right thumbstick (wheel closed) = turn. search box on the wheel (point with your other controller) = search emoji with the Meta keyboard. Index + grip together = voice: speak, let go to send, wave your free hand through the box to cancel. Point at ? or ⚙️ and pull the trigger to close this.');
+helpPanel.userData.draw('? Tips','Tap index trigger = open / close the emoji wheel. HOLD index trigger alone (wheel closed) = Ask Spark (in AR it gets the headset camera view). HOLD the trigger of the wheel hand while the wheel is open, or index + grip, = translate to emoji. Ask Spark: speak a question, release, a ball of light forms in front of you and the 🧚 fairy emerges from it to answer in emoji. 📷 at the top = AR passthrough mode (real world via headset cameras). Index trigger on either controller = open / close the emoji wheel. Grab the ball with your other pointer and drag it to an emoji to pick. Left thumbstick = walk (it does not move the ball). Right thumbstick left/right = pages. Right thumbstick (wheel closed) = turn. search box on the wheel (point with your other controller) = search emoji with the Meta keyboard. Index + grip together = voice: speak, let go to send, wave your free hand through the box to cancel. Point at ? or ⚙️ and pull the trigger to close this.');
 let panelOpen=null;
 
 function uiRectBtn(id,label,x,y,w,h){const W=512,H=Math.round(512*h/w),cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');
@@ -570,15 +570,16 @@ async function sparkAsk(text,shot){
  console.warn('[Muse Spark Ask] fallback:',why);
  return{seq:localTranslate(text),via:'local',why}}
 async function finishAsk(said,shot){
- fairyThink();setStatus('Asking Spark 🧚… "'+said+'"');
+ if(arMode&&!shot){showErr('AR: could not get a camera frame, so Spark is answering from your words only. Make sure camera access was allowed (Quest: Browser permissions → camera) and re-enter AR.')}
+ fairyThink();setStatus('Asking Spark 🧚… "'+said+'"'+(arMode&&shot?' (with camera view)':''));
  let res;thinkingCount++;try{res=await sparkAsk(said,shot)}finally{thinkingCount--}
  if(res.via==='local'){showErr('Spark Ask failed, so the crude local fallback was used. Reason: '+res.why);setStatus('⚠️ LOCAL fallback (not Spark) answering "'+said+'": '+res.seq.join(' '))}
  else setStatus('🧚 Spark answered "'+said+'": '+res.seq.join(' '));
  vrToast('🧚 Spark',res.seq.join(' '));
  if(res.seq.length)fairyShowAnswer(res.seq);else fairyDismiss()}
 
-const SPARK_SIDE=1;
-const ORB_DIST=.7,FAIRY_DIST=1.45,FS=1.3,EMERGE_MS=1400;let sparkSide=SPARK_SIDE,ORB_SIDE=.5*SPARK_SIDE,FAIRY_SIDE=.8*SPARK_SIDE,sparkSideT=0;
+const ORB_DIST=.75,FAIRY_DIST=1.25,FS=1.3,EMERGE_MS=1400;let ORB_SIDE=.1,FAIRY_SIDE=.22,sparkSideT=0;
+const SPARK_CANDIDATES=[0,.18,-.18,.36,-.36,.54,-.54];
 const UPV=new THREE.Vector3(0,1,0),_fw=new THREE.Vector3(),_rt=new THREE.Vector3(),_ey=new THREE.Vector3(),_tp=new THREE.Vector3(),_tp2=new THREE.Vector3();
 
 function frontPos(dist,side,drop,out){camera.getWorldDirection(_fw);_fw.y*=.35;_fw.normalize();_rt.crossVectors(_fw,UPV).normalize();worldPos(camera,_ey);
@@ -586,20 +587,22 @@ function frontPos(dist,side,drop,out){camera.getWorldDirection(_fw);_fw.y*=.35;_
 
 const _spRay=new THREE.Raycaster(),_spD=new THREE.Vector3(),_spP=new THREE.Vector3(),_spH=new THREE.Vector3();
 function sparkObstacles(){const a=[];for(const o of arHide)if(o.visible)a.push(o);
- for(const o of[wheel,voicePanel,toast,helpPanel,fairyAnswer])if(o&&o.visible)a.push(o);return a}
-function sparkSideScore(sign){const obs=sparkObstacles();let score=3;
- for(const[dist,w,drop]of[[ORB_DIST,.5,-.05],[(ORB_DIST+FAIRY_DIST)/2,.65,-.07],[FAIRY_DIST,.8,-.1]]){
-  frontPos(dist,w*sign,drop,_spP);const right=_rt.clone();
+ for(const o of[wheel,voicePanel,toast,helpPanel])if(o&&o.visible)a.push(o);return a}
+function sparkPlaceScore(side){const obs=sparkObstacles();let score=3;
+ for(const[dist,off,drop]of[[ORB_DIST,side*.45,-.05],[FAIRY_DIST,side,-.1]]){
+  frontPos(dist,off,drop,_spP);const right=_rt.clone();
   _spD.copy(_spP).sub(_ey);const L=_spD.length();_spD.divideScalar(L);_spRay.set(_ey,_spD);_spRay.near=0;_spRay.far=L+3;
   let h=_spRay.intersectObjects(obs,true);let c=h.length?Math.min(3,h[0].distance-L):3;if(c<0)c*=3;
   score=Math.min(score,c);
-  _spRay.set(_spP,right.multiplyScalar(sign));_spRay.far=1.5;h=_spRay.intersectObjects(obs,true);
+  _spRay.set(_spP,right);_spRay.far=1.5;h=_spRay.intersectObjects(obs,true);
   if(h.length)score=Math.min(score,h[0].distance-.35);
   if(renderer.xr.isPresenting)for(const hand of[ctrlHand.left,ctrlHand.right]){worldPos(hand,_spH);const d=_spH.distanceTo(_spP);if(d<.35)score=Math.min(score,d-.35)}}
  return score}
-function pickSparkSide(margin,reset){const cur=reset?SPARK_SIDE:sparkSide;
- const sc=sparkSideScore(cur),so=sparkSideScore(-cur),next=so>sc+margin?-cur:cur;
- if(next!==sparkSide||reset){sparkSide=next;ORB_SIDE=.5*next;FAIRY_SIDE=.8*next}}
+function sparkPlaceKey(side){return Math.min(sparkPlaceScore(side),.6)-Math.abs(side)*.9}
+function pickSparkPlace(force){let best=FAIRY_SIDE,bestKey=-Infinity;
+ for(const side of SPARK_CANDIDATES){const k=sparkPlaceKey(side);if(k>bestKey){bestKey=k;best=side}}
+ if(!force&&best!==FAIRY_SIDE&&bestKey<sparkPlaceKey(FAIRY_SIDE)+.25)best=FAIRY_SIDE;
+ FAIRY_SIDE=best;ORB_SIDE=best*.45}
 const easeOutBack=x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
 const fairyState={mode:'hidden',t0:0,from:new THREE.Vector3(),answerUntil:0,hasAnswer:false,s0:1};
 
@@ -633,7 +636,7 @@ let fairyAnswerItems=[];
 function fairyTargetPos(out){return frontPos(FAIRY_DIST,FAIRY_SIDE,-.1,out)}
 
 function summonOrb(){const m=fairyState.mode;if(m==='orb'||m==='orbthink')return;
- fairy.visible=false;fairyAnswer.visible=false;fairyState.hasAnswer=false;
+ fairy.visible=false;fairyAnswer.visible=false;fairyState.hasAnswer=false;pickSparkPlace(true);sparkSideT=performance.now();
  frontPos(ORB_DIST,ORB_SIDE,-.05,orb.position);orb.scale.setScalar(.001);orb.visible=true;
  fairyState.mode='orb';fairyState.t0=performance.now()}
 
@@ -652,7 +655,7 @@ function fairyShowAnswer(seq){
    const ox=(col-(rc-1)/2)*.19*FS*sg,oy=(rows-1-row)*.19*FS+.02*FS;const pop=Math.min(1,Math.max(0,(performance.now()-fairyState.answerUntil+8000-j*160)/180));const sc2=(.3+.7*pop)*FS;
    this.position.set(Math.cos(yaw)*ox,oy,-Math.sin(yaw)*ox);this.rotation.set(0,yaw,0);this.scale.set(sg*sc2,sc2,sc2);this.updateMatrix();this.matrixWorld.multiplyMatrices(g.matrixWorld,this.matrix)};
   fairyAnswer.add(m);fairyAnswerItems.push(m)});
- fairyState.hasAnswer=true;
+ fairyState.hasAnswer=true;pickSparkPlace(true);sparkSideT=performance.now();
  if(['hidden','return','orbfade'].includes(fairyState.mode)){fairyState.mode='hidden';summonOrb()}
  if(fairyState.mode==='orb'||fairyState.mode==='orbthink')beginEmerge();
  else if(fairyState.mode!=='emerge')enterAnswer()}
@@ -680,6 +683,7 @@ function updateFairy(dt,t){updateFairyCore(dt,t);updateSparkDots()}
 function updateFairyCore(dt,t){const m=fairyState.mode,now=performance.now();
  if(m==='hidden'){fairy.visible=false;fairyAnswer.visible=false;orb.visible=false;sparkLight.visible=false;return}
  sparkLight.visible=true;
+ if(now-sparkSideT>750){sparkSideT=now;pickSparkPlace()}
 
  if(m==='orb'||m==='orbthink'||m==='orbfade'||m==='emerge'){
   const think=m==='orbthink';let sc=1,flash=0,gather=0,spin=think?6:2;
@@ -782,7 +786,7 @@ function breakSentence(){if(!voicePanel.visible||!curSession)return;const s=curS
 const mouseN=new THREE.Vector2();const keys={};let mouseDown=false,pointerLocked=false;
 addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;keys[e.code]=true;if(e.code==='KeyL'&&!e.repeat&&!renderer.xr.isPresenting&&!kb){pendingWheel.desktop=performance.now()}
  if(e.code==='Space'){e.preventDefault();if(!e.repeat&&rig.position.y<=.001&&jumpV===0)jumpV=3.4}if(wheelOpen&&e.code==='ArrowLeft')setTab(tabIndex-1);if(wheelOpen&&e.code==='ArrowRight')setTab(tabIndex+1);if(e.code==='KeyQ')setTab(tabIndex-1);if(e.code==='KeyE')setTab(tabIndex+1);if(e.code==='KeyV'&&!e.repeat)startListening();if(e.code==='Escape')breakSentence()});
-addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyL'){kbHeldL=false;if(pendingWheel.desktop){pendingWheel.desktop=0;if(!listening&&!kb){if(wheelOpen&&wheelHand==='desktop')closeWheelAndSend();else if(!wheelOpen)openWheel('desktop')}}else if(listening&&voiceMode==='ask'&&!renderer.xr.isPresenting)releaseVoice()}if(e.code==='KeyV')releaseVoice()});
+addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyL'){kbHeldL=false;if(pendingWheel.desktop){pendingWheel.desktop=0;if(!listening&&!kb){if(wheelOpen&&wheelHand==='desktop')closeWheelAndSend();else if(!wheelOpen)openWheel('desktop')}}else if(listening&&deskLVoice&&!renderer.xr.isPresenting){deskLVoice=false;releaseVoice()}}if(e.code==='KeyV')releaseVoice()});
 let yaw=0,pitch=0,dragging=false,lx=0,ly=0;
 canvas.addEventListener('pointerdown',e=>{if(wheelOpen&&wheelHand==='desktop'){mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1));if(searchOver(mouseN)){startSearch('desktop');return}
   {const l=wheelLayout(),ax=(mouseN.x*l.halfW-l.xOff)/l.sc,ay=(mouseN.y*l.halfH-l.yOff)/l.sc;if(Math.hypot(ax,ay)>WHEEL_R+.04){closeWheelAndSend();return}}
@@ -796,11 +800,11 @@ addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=
 let wheelOpen=false,wheelHand=null,voiceHand=null,wasTrigger=false,stickDir=0,stickRep=0,jumpV=0,wasGrab=false,armedPeg=null,ballHeld=false,viaStick=false,armedMem=null,armedMemT=0,hapHand='right',hapAcc=0,prevSnapPeg=null,wasArmedPeg=false;
 const TRIGGER_HOLD_MS=450;
 const pendingWheel={left:0,right:0,desktop:0};
-let askHand=null;
+let askHand=null,holdTransHand=null,deskLVoice=false;const pendingClose={left:0,right:0};
 const holdOff=new THREE.Vector2(),GRAB_R=.11;
 const OUTER=.15;
 const prevH={left:{trigger:false,squeeze:false},right:{trigger:false,squeeze:false}};
-function openWheel(h){if(wheelOpen)return;wheelClosing=false;resetClose();spawnT=0;clickedPeg=null;wDrag.x=wDrag.y=0;vrOff.set(0,0,0);wDragging=false;wheelLatched=true;wheelOpen=true;wheelHand=h||'desktop';wheel.visible=true;lockedEmoji=null;dwell=0;ballHeld=false;viaStick=false;ballPos.set(0,0);ballTarget.set(0,0);setStatus('Wheel open — page: '+TABS[tabIndex].name+'. Push your thumbstick toward an emoji and let go to pick it (or grab the ball with your other controller\'s pointer + trigger). The other thumbstick left/right flips pages.')}
+function openWheel(h){if(wheelOpen)return;wheelClosing=false;resetClose();spawnT=0;clickedPeg=null;wDrag.x=wDrag.y=0;vrOff.set(0,0,0);wDragging=false;wheelLatched=true;wheelOpen=true;wheelHand=h||'desktop';wheel.visible=true;lockedEmoji=null;dwell=0;ballHeld=false;viaStick=false;ballPos.set(0,0);ballTarget.set(0,0);setStatus('Wheel open — page: '+TABS[tabIndex].name+'. Grab the ball with your other controller\'s pointer + trigger and drag it to an emoji to pick it. Left thumbstick walks; right thumbstick left/right flips pages.')}
 function cancelWheel(){if(wheelOpen)startClose();wheelLatched=false;wheelOpen=false;wheelHand=null;sequence=[];renderSeqStrip()}
 function closeWheelAndSend(){if(!wheelOpen)return;startClose();wheelLatched=false;wheelOpen=false;wheelHand=null;
  if(sequence.length){const s=[...sequence];sequence=[];renderSeqStrip();popSequence(s);setStatus('Sent above your head: '+s.join(' '))}}
@@ -810,14 +814,24 @@ function applyARMode(on){arMode=!!on;document.body.classList.toggle('ar-on',arMo
  for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
  setStatus(arMode?'📷 AR mode — real world via headset cameras. Hold the trigger (wheel closed) and ask Spark about what you see.':'VR mode — back in the virtual room.')}
 async function enterXR(kind){if(!navigator.xr){
-   if(kind==='ar'){if(arMode){applyARMode(false);return}try{arCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});const v=$('arCam');v.srcObject=arCamStream;v.style.display='block';applyARMode(true)}catch(e){setStatus('AR needs a headset (or camera permission): '+e.message)}return}
-   setStatus('WebXR not available in this browser — desktop preview still works.');return}
- try{const mode=kind==='ar'?'immersive-ar':'immersive-vr';const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return}
+   if(kind==='ar'){if(arMode){applyARMode(false);return true}try{arCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});const v=$('arCam');v.srcObject=arCamStream;v.style.display='block';applyARMode(true);return true}catch(e){setStatus('AR needs a headset (or camera permission): '+e.message)}return false}
+   setStatus('WebXR not available in this browser — desktop preview still works.');return false}
+ try{const mode=kind==='ar'?'immersive-ar':'immersive-vr';const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
   const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access']});
   renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0);
   session.addEventListener('end',()=>{applyARMode(false);$('vrBtn').textContent='Enter VR'});
-  await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message)}}
-async function toggleAR(){if(renderer.xr.isPresenting){const wasAR=arMode;try{await renderer.xr.getSession()?.end()}catch(_){}if(!wasAR)setTimeout(()=>enterXR('ar'),350);return}enterXR(arMode?'vr':'ar')}
+  await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message);return false}}
+let xrSwitching=false;
+async function toggleAR(){if(xrSwitching)return;xrSwitching=true;
+ try{
+  if(renderer.xr.isPresenting){const wasAR=arMode,session=renderer.xr.getSession();
+   if(session){const ended=new Promise(res=>{let done=false;const fin=()=>{if(done)return;done=true;res()};renderer.xr.addEventListener('sessionend',fin);setTimeout(fin,1500)});
+    try{await session.end()}catch(_){}
+    if(renderer.xr.isPresenting)await ended}
+   if(!wasAR){let ok=await enterXR('ar');if(!ok){await new Promise(r=>setTimeout(r,300));ok=await enterXR('ar')}
+    if(!ok)showErr('Could not switch to AR — immersive AR may be unsupported, or the browser blocked the new session. Tap 📷 AR Mode on the flat page to try again.')}
+   return}
+  await enterXR(arMode?'vr':'ar')}finally{xrSwitching=false}}
 $('vrBtn').onclick=()=>enterXR('vr');
 $('arBtn').onclick=()=>{if(renderer.xr.isPresenting)toggleAR();else enterXR(arMode?'vr':'ar')};
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
@@ -893,7 +907,7 @@ function startSearch(h){if(kb&&performance.now()-kb.t<4000)return;if(h!=='deskto
 function onSelStart(e){const h=e.inputSource&&e.inputSource.handedness;if(h!=='left'&&h!=='right')return;if(kb&&performance.now()-kb.t<4000)return;
  if(wheelOpen){if(searchHotHand===h)startSearch(h);else if(h!==wheelHand&&!listening)uiPress(h);return}
  if(!listening)uiPress(h)}
-renderer.xr.addEventListener('sessionstart',()=>{const s=renderer.xr.getSession();if(!s)return;
+renderer.xr.addEventListener('sessionstart',()=>{standEye=0;avSc=1;dropS=0;smL.set(-.2,.74,-.03);smR.set(.2,.74,-.03);const s=renderer.xr.getSession();if(!s)return;
  s.addEventListener('selectstart',onSelStart);
  const setPinch=(e,v,tbl)=>{const h=e.inputSource&&e.inputSource.handedness;if(h==='left'||h==='right')tbl[h]=v};
  s.addEventListener('selectstart',e=>setPinch(e,true,handPinch));s.addEventListener('selectend',e=>setPinch(e,false,handPinch));
@@ -940,12 +954,9 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
 
  if(!inXR){camera.position.set(0,1.6,0);camera.rotation.set(pitch,yaw,0,'YXZ')}
 
- if(!(inXR&&wheelOpen)){const sx=inXR?L.stick[0]:(keys.KeyD?1:0)-(keys.KeyA?1:0);const sz=inXR?L.stick[1]:(keys.KeyS?1:0)-(keys.KeyW?1:0);
+ {const sx=inXR?L.stick[0]:(keys.KeyD?1:0)-(keys.KeyA?1:0);const sz=inXR?L.stick[1]:(keys.KeyS?1:0)-(keys.KeyW?1:0);
   if(Math.abs(sx)>.12||Math.abs(sz)>.12){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();const right=new THREE.Vector3().crossVectors(fwd,new THREE.Vector3(0,1,0));
    rig.position.addScaledVector(fwd,-sz*2.2*dt).addScaledVector(right,sx*2.2*dt);
-   rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
- else if(inXR&&wheelHand!=='desktop'){
-  const st=(wheelHand==='left'?R:L).stick;if(Math.abs(st[1])>.25&&Math.abs(st[1])>Math.abs(st[0])){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();rig.position.addScaledVector(fwd,-st[1]*2.2*dt);
    rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
 
  if(inXR&&!wheelOpen){const tx=R.stick[0];
@@ -979,9 +990,12 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   const camQ=camera.getWorldQuaternion(new THREE.Quaternion());
   const restL=new THREE.Vector3(-.2,.74,-.03).applyQuaternion(bodyQ),restR=new THREE.Vector3(.2,.74,-.03).applyQuaternion(bodyQ),restQ=bodyQ.clone().multiply(_handDown);
   let handLv,handRv;
-  if(inXR){handLv=L.src?worldPos(ctrlHand.left,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restL;handRv=R.src?worldPos(ctrlHand.right,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restR;
-   smL.copy(handLv);smR.copy(handRv);
-   smQL.copy(L.src?ctrlHand.left.getWorldQuaternion(new THREE.Quaternion()):restQ);smQR.copy(R.src?ctrlHand.right.getWorldQuaternion(new THREE.Quaternion()):restQ)}
+  if(inXR){const rawL=L.src?worldPos(ctrlHand.left,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restL,rawR=R.src?worldPos(ctrlHand.right,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc):restR;
+   const hk=1-Math.exp(-dt*28),qk=1-Math.exp(-dt*24);
+   if(smL.distanceToSquared(rawL)>.36)smL.copy(rawL);else smL.lerp(rawL,hk);
+   if(smR.distanceToSquared(rawR)>.36)smR.copy(rawR);else smR.lerp(rawR,hk);
+   handLv=smL.clone();handRv=smR.clone();
+   smQL.slerp(L.src?ctrlHand.left.getWorldQuaternion(new THREE.Quaternion()):restQ,qk);smQR.slerp(R.src?ctrlHand.right.getWorldQuaternion(new THREE.Quaternion()):restQ,qk)}
   else{const pt=deskPoint(shR);smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(pt?_ptPos:restR,pt?.35:.2);handLv=smL.clone();handRv=smR.clone();
    const k=Math.min(1,dt*10);smQL.slerp(wheelOpen?camQ:restQ,k);smQR.slerp(pt?_ptQ:restQ,pt?Math.min(1,dt*16):k)}
 
@@ -1037,13 +1051,16 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
 
    else if(S.trigger&&!P.trigger&&!S.squeeze&&!wheelOpen&&!listening&&!uiHover[h]&&!uiConsumed[h]&&!kb)pendingWheel[h]=performance.now();
 
-   else if(S.trigger&&!P.trigger&&!S.squeeze&&wheelOpen&&wheelHand===h&&!listening&&!kb&&!uiHover[h]&&!uiConsumed[h])closeWheelAndSend();
+   else if(S.trigger&&!P.trigger&&!S.squeeze&&wheelOpen&&wheelHand===h&&!listening&&!kb&&!uiHover[h]&&!uiConsumed[h])pendingClose[h]=performance.now();
+   if(pendingClose[h]&&(!wheelOpen||wheelHand!==h||S.squeeze))pendingClose[h]=0;
+   if(pendingClose[h]&&S.trigger&&performance.now()-pendingClose[h]>=TRIGGER_HOLD_MS&&wheelOpen&&wheelHand===h&&!listening&&!kb){pendingClose[h]=0;holdTransHand=h;startListening();if(listening)voiceHand=h;else holdTransHand=null}
+   if(pendingClose[h]&&!S.trigger){pendingClose[h]=0;if(wheelOpen&&wheelHand===h&&!listening&&!kb)closeWheelAndSend()}
    if(pendingWheel[h]&&S.trigger&&!S.squeeze&&performance.now()-pendingWheel[h]>=TRIGGER_HOLD_MS&&!wheelOpen&&!listening){pendingWheel[h]=0;askHand=h;startListening('ask');if(listening)voiceHand=h;else askHand=null}
    if(pendingWheel[h]&&!S.trigger){pendingWheel[h]=0;if(!wheelOpen&&!listening&&!kb)openWheel(h)}
    if(listening&&voiceHand===h&&voiceMode==='ask'&&askHand===h&&!S.trigger){releaseVoice();voiceHand=null;askHand=null}
-   else if(listening&&voiceHand===h&&voiceMode!=='ask'&&!comboNow){releaseVoice();voiceHand=null}}
+   else if(listening&&voiceHand===h&&voiceMode!=='ask'&&!(holdTransHand===h?S.trigger:comboNow)){releaseVoice();voiceHand=null;if(holdTransHand===h)holdTransHand=null}}
  }else{wasTrigger=!!keys.KeyL;
-  if(pendingWheel.desktop&&keys.KeyL&&performance.now()-pendingWheel.desktop>=TRIGGER_HOLD_MS&&!wheelOpen&&!listening&&!kb){pendingWheel.desktop=0;startListening('ask')} }
+  if(pendingWheel.desktop&&keys.KeyL&&performance.now()-pendingWheel.desktop>=TRIGGER_HOLD_MS&&!listening&&!kb){pendingWheel.desktop=0;deskLVoice=true;if(wheelOpen)startListening();else startListening('ask');if(!listening)deskLVoice=false} }
 
  if(wheelOpen){
   let aim=null;
@@ -1061,10 +1078,10 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    const ro=worldPos(ctrlHand[aimHand],tmpV),rd=new THREE.Vector3(0,0,-1).applyQuaternion(ctrlHand[aimHand].getWorldQuaternion(new THREE.Quaternion()));
    const ray=new THREE.Ray(ro,rd);if(ray.intersectPlane(_plane,_hit)){const local=wheel.worldToLocal(_hit.clone());aimHitW.copy(_hit);aim=new THREE.Vector2(local.x,local.y)}}
 
-  if(inXR){const fst=(aimHand==='left'?L:R).stick,fx=fst[0];
+  if(inXR){const fst=R.stick,fx=fst[0];
    if(Math.abs(fx)>.6&&Math.abs(fx)>Math.abs(fst[1])){const d=Math.sign(fx);if(d!==stickDir){stickDir=d;stickRep=.5;setTab(tabIndex+d)}else{stickRep-=dt;if(stickRep<=0){stickRep=.28;setTab(tabIndex+d)}}}else stickDir=0}
 
-  const now=performance.now(),gp=inXR?(wheelHand==='right'?R:L).stick:[0,0],sMag=Math.hypot(gp[0],gp[1]),stickOn=sMag>.25;
+  const now=performance.now();
   const grab=inXR?(aimHand==='left'?L:R).trigger:mouseDown;
   const hover=!!aim&&Math.hypot(aim.x-ballPos.x,aim.y-ballPos.y)<GRAB_R;
   const sHot=!!aim&&!ballHeld&&!kb&&Math.abs(aim.x-SEARCH_P.x)<SEARCH_HW&&Math.abs(aim.y-SEARCH_P.y)<SEARCH_HH*1.3;
@@ -1076,8 +1093,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   if(sHot&&!prevHot&&inXR)haptic(aimHand,.25,20);prevHot=sHot;
   searchBtn.userData.draw(kb&&kb.kind==='search'?xrInput.value:searchQuery,!!(kb&&kb.kind==='search'),sHot);
   if(!ballHeld){
-   if(stickOn){ballHeld=true;viaStick=true}
-   else if(grab&&!wasGrab&&hover&&!uiAim){ballHeld=true;viaStick=false;clickedPeg=null;holdOff.set(ballPos.x-aim.x,ballPos.y-aim.y)}
+   if(grab&&!wasGrab&&hover&&!uiAim){ballHeld=true;viaStick=false;clickedPeg=null;holdOff.set(ballPos.x-aim.x,ballPos.y-aim.y)}
    else if(grab&&!wasGrab&&aim&&!sHot&&!kb&&!uiAim){
     let cm=null,cd=.048;for(const m of emojiMeshes){const d=Math.hypot(aim.x-m.userData.home.x,aim.y-m.userData.home.y);if(d<cd){cd=d;cm=m}}
     if(cm){selectEmoji(cm.userData.emoji);clickedPeg=cm;ballPos.set(cm.userData.home.x,cm.userData.home.y);ballTarget.copy(ballPos);if(inXR)haptic(aimHand,.7,35)}
@@ -1085,8 +1101,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   if(!grab||ballHeld)wDragging=false;
   if(wDragging&&inXR&&aim){const np=aimHitW.clone().add(wGrabOff);vrOff.add(np.clone().sub(wheel.position));wheel.position.copy(np);wheel.updateMatrixWorld(true)}
   if(ballHeld){
-   if(viaStick){if(stickOn){const k=Math.min(1,sMag/.8)*WHEEL_R/sMag;ballTarget.set(gp[0]*k,-gp[1]*k)}else ballTarget.set(0,0)}
-   else if(aim)ballTarget.set(aim.x+holdOff.x,aim.y+holdOff.y)}
+   if(aim)ballTarget.set(aim.x+holdOff.x,aim.y+holdOff.y)}
   else if(clickedPeg)ballTarget.set(clickedPeg.userData.home.x,clickedPeg.userData.home.y);else ballTarget.set(0,0);
   if(ballTarget.length()>WHEEL_R)ballTarget.setLength(WHEEL_R);
   ballPos.lerp(ballTarget,ballHeld?.45:.25);let best=null;
@@ -1097,14 +1112,14 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   if(ballHeld)clickedPeg=null;
   snapped=best;
   if(snapped){ballPos.lerp(new THREE.Vector2(snapped.userData.home.x,snapped.userData.home.y),.7);dwell+=dt}else dwell=0;
-  if(ballHeld){const holding=viaStick?stickOn:grab;
+  if(ballHeld){const holding=grab;
    if(holding){armedPeg=(snapped&&dwell>=.05)?snapped:null;if(armedPeg){armedMem=armedPeg;armedMemT=now}}
    else{
-    const peg=viaStick?((armedMem&&now-armedMemT<180)?armedMem:null):armedPeg;
+    const peg=armedPeg;
     if(peg)selectEmoji(peg.userData.emoji);ballHeld=false;viaStick=false;armedPeg=null;armedMem=null}}
   else armedPeg=null;
 
-  if(inXR&&ballHeld){hapHand=viaStick?wheelHand:aimHand;
+  if(inXR&&ballHeld){hapHand=aimHand;
    hapAcc-=dt;if(hapAcc<=0){hapAcc=.045;haptic(hapHand,.12+.4*Math.min(1,ballPos.length()/WHEEL_R),60)}
    if(snapped&&snapped!==prevSnapPeg)haptic(hapHand,.65,30);
    if(armedPeg&&!wasArmedPeg)haptic(hapHand,1,80)}
@@ -1115,7 +1130,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   ball.material.matcap=armedPeg?matFlash:matGold;ball.material.color.setScalar(1+(flashT/.22)*1.1);
 
   {const bp=beat(t),dist=Math.max(0,WHEEL_R-ballPos.length())/WHEEL_R,rp=beat(t-.3*dist);
-   const sc=(ballHeld?1.25:(hover?1.15:1))*(1+.07*bp);ball.scale.setScalar(sc);
+   const sc=(hover&&!ballHeld?1.15:1)*(1+.07*bp);ball.scale.setScalar(sc);
    ballHalo.material.opacity=.015+.035*bp;ballHalo.scale.setScalar(.95+.15*bp);
    ringGlow.material.opacity=.02+.045*rp;ringGlow.scale.setScalar(1+.004*rp);ringGlow2.material.opacity=.006+.016*rp;ringGlow2.scale.setScalar(1+.008*rp);ring.material.color.setRGB(.8,.68+.04*rp,.3+.08*rp);
 
@@ -1160,7 +1175,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    a.items.forEach((m,j)=>{const lt=el-j*STAGGER;if(lt<0){m.visible=false;return}m.visible=true;
     m.userData.sc=lt<180?THREE.MathUtils.mapLinear(lt,0,180,.01,1.15):(lt<320?THREE.MathUtils.mapLinear(lt,180,320,1.15,1):1);
     m.material.opacity=op})}}
- if(shotReq){const rq=shotReq;shotReq=null;let url=null;try{url=(arMode?capturePassthroughShot():null)||captureSceneShot()}catch(e){console.warn('[scene shot]',e)}rq(url)}
+ if(shotReq){const rq=shotReq;shotReq=null;let url=null;try{if(arMode){url=capturePassthroughShot()||captureVideoShot();if(!url)console.warn('[scene shot] AR: no camera frame available')}else url=captureSceneShot()}catch(e){console.warn('[scene shot]',e)}rq(url)}
  renderer.render(scene,camera);
 })}
 
@@ -1176,11 +1191,15 @@ function capturePassthroughShot(){try{
   for(const view of pose.views){const cam=view.camera;if(!cam)continue;const tex=binding.getCameraImage(cam);if(!tex)continue;
    const w=cam.width||640,h=cam.height||480,fb=gl.createFramebuffer(),prevFb=gl.getParameter(gl.FRAMEBUFFER_BINDING);
    gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+   if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE){gl.bindFramebuffer(gl.FRAMEBUFFER,prevFb);gl.deleteFramebuffer(fb);console.warn('[passthrough shot] camera texture not readable');continue}
    const px=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px);
    gl.bindFramebuffer(gl.FRAMEBUFFER,prevFb);gl.deleteFramebuffer(fb);
-   const cv=document.createElement('canvas');cv.width=SHOT_W;cv.height=SHOT_H;const g=cv.getContext('2d'),img=g.createImageData(w,h);img.data.set(px);const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').putImageData(img,0,0);g.save();g.translate(0,SHOT_H);g.scale(1,-1);g.drawImage(tmp,0,0,SHOT_W,SHOT_H);g.restore();
+   const cv=document.createElement('canvas');cv.width=SHOT_W;cv.height=SHOT_H;const g=cv.getContext('2d'),img=g.createImageData(w,h);img.data.set(px);const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').putImageData(img,0,0);const sc=Math.max(SHOT_W/w,SHOT_H/h),dw=w*sc,dh=h*sc;g.save();g.translate(0,SHOT_H);g.scale(1,-1);g.drawImage(tmp,(SHOT_W-dw)/2,(SHOT_H-dh)/2,dw,dh);g.restore();
+   if(isBlankShot(g))continue;
    return cv.toDataURL('image/jpeg',.72)}
   return null}catch(e){console.warn('[passthrough shot]',e);return null}}
+function isBlankShot(g){try{const d=g.getImageData(0,0,SHOT_W,SHOT_H).data;let sum=0,n=0;for(let i=0;i<d.length;i+=4*97){sum+=d[i]+d[i+1]+d[i+2];n++}return sum/n<3}catch(_){return false}}
+function captureVideoShot(){try{const v=$('arCam');if(!v||!v.videoWidth||v.style.display==='none')return null;const w=v.videoWidth,h=v.videoHeight,sc=Math.max(SHOT_W/w,SHOT_H/h),dw=w*sc,dh=h*sc,g=shotCv.getContext('2d');g.drawImage(v,(SHOT_W-dw)/2,(SHOT_H-dh)/2,dw,dh);return shotCv.toDataURL('image/jpeg',.72)}catch(e){console.warn('[video shot]',e);return null}}
 function captureSceneShot(){
  camera.updateWorldMatrix(true,false);camera.getWorldPosition(shotCam.position);camera.getWorldQuaternion(shotCam.quaternion);shotCam.updateMatrixWorld(true);
  const hide=[wheel,ui,voicePanel,fairy,fairyAnswer,orb,ptrBalls.left,ptrBalls.right,ptrBalls.desktop,...overheadAnims.map(a=>a.g)],was=hide.map(o=>o.visible);hide.forEach(o=>o.visible=false);
