@@ -549,21 +549,21 @@ async function finishVoice(said,shot){
  else setStatus('Voice message sent: '+res.seq.join(' '));
  if(res.seq.length)popSequence(res.seq)}
 
-const SPARK_ASK_PROMPT='You are Muse Spark, a helpful assistant answering out loud through emoji. The person spoke a question or request (not a statement to translate). Actually ANSWER it: work out what they are asking, use the attached scene image to infer what they mean (objects, people, place, activity, mood — in AR mode this is the real world through their headset cameras, in VR it is their virtual room), and give the helpful answer as an emoji sequence of 12 or less symbols. Output ONLY the emoji sequence, no words. Do not merely translate or repeat their question back. If they ask what something is, answer with what it is; if they ask for help, answer with the helpful thing. Refuse lewd or hateful requests with 🚫.';
-const SCENE_NOTE_ASK_VR='An image of what the speaker is currently looking at in their VR room is attached. Use it to infer what their question refers to (who or what is around, the setting, the mood). Answer the question itself — do not describe the image for its own sake and do not just translate the question.';
-const SCENE_NOTE_ASK_AR='The speaker is in AR passthrough mode, looking at the REAL WORLD through their headset cameras. The attached image (when present) is that real-world view. Use it to infer what their question refers to (real objects, people, place, signs, activity). Answer the question itself — do not just translate it. If no image is attached, answer from the question alone.';
+const SPARK_ASK_PROMPT='You are Muse Spark, a knowledgeable assistant who answers out loud through emoji. The person asked a question; an image of what they are looking at is attached. Work in two steps. STEP 1 — on one line starting with "THINK:", say in plain words what the question refers to (pronouns like he/she/it/this/that mean the main subject in the image; use every visible cue: captions, plaques, signs, text, famous artworks, objects, setting) and what the correct answer is. If the subject is a well-known person, work, place or object that you can tell from such cues or from the artwork itself, name it and answer from your knowledge; if you truly cannot tell who or what it is, say what you can see and answer as helpfully as you can about that. STEP 2 — on a new line starting with "ANSWER:", give the answer as 12 or fewer emoji, in a sensible order, using the clearest, most widely understood symbols for the key facts (concrete things, not vague faces or filler). Never just restate or translate the question. Refuse lewd or hateful requests with ANSWER: 🚫. Output exactly those two lines.';
+const SCENE_NOTE_ASK_VR='The attached image is what the speaker sees in their VR room. Use it to work out what their question refers to, then answer the question itself.';
+const SCENE_NOTE_ASK_AR='The attached image is the REAL WORLD as seen through the speaker\'s headset cameras (AR passthrough). It shows what they are looking at right now, so "he/she/it/this" refers to something in it. Use it to work out what their question refers to, then answer the question itself. If no image is attached, answer from the question alone.';
 async function sparkAsk(text,shot){
  let why='';
  if(!settings.key)why='no Meta API key set (add it in ⚙ settings or the MANUAL CONFIG block)';
  else{try{
    const note=arMode?SCENE_NOTE_ASK_AR:SCENE_NOTE_ASK_VR;
-   const post=img=>fetch(settings.sparkUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.key},body:JSON.stringify({model:settings.model,temperature:0.4,reasoning_effort:'minimal',max_completion_tokens:2000,messages:[{role:'user',content:img?[{type:'text',text:SPARK_ASK_PROMPT+'\n\n'+note+'\n\nQuestion: '+text},{type:'image_url',image_url:{url:img}}]:SPARK_ASK_PROMPT+'\n\n'+note+'\n\nQuestion: '+text}]})});
+   const post=img=>fetch(settings.sparkUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.key},body:JSON.stringify({model:settings.model,temperature:0.3,reasoning_effort:'low',max_completion_tokens:3000,messages:[{role:'user',content:img?[{type:'text',text:SPARK_ASK_PROMPT+'\n\n'+note+'\n\nQuestion: '+text},{type:'image_url',image_url:{url:img}}]:SPARK_ASK_PROMPT+'\n\n'+note+'\n\nQuestion: '+text}]})});
    let r=await post(shot);
    if(!r.ok&&shot){console.warn('[Muse Spark Ask] image rejected, retrying text-only:',r.status);r=await post(null)}
    const raw=await r.text();console.log('[Muse Spark Ask]',r.status,raw);
    if(!r.ok)why='HTTP '+r.status+' from Spark: '+raw.slice(0,160);
    else{let j=null;try{j=JSON.parse(raw)}catch(_){}
-    const out=j?extractText(j):raw;const f=sanitizeEmojis(out);
+    const out=j?extractText(j):raw;console.log('[Muse Spark Ask] text:',out);const am=out.match(/ANSWER:\s*([\s\S]*)$/i);const f=sanitizeEmojis(am?am[1]:out);
     if(f.length)return{seq:f,via:'spark',why:''};
     why='Spark replied with no emojis. Raw: '+raw.slice(0,200)}
   }catch(e){why='could not reach Spark ('+e.message+')'}}
