@@ -354,7 +354,7 @@ function startClose(){wheelClosing=true;closeT=0;spawnT=SPAWN_TRACE+SPAWN_POP+BA
 function runClosing(dt){
  closeT+=dt;wheel.scale.setScalar(closeBase);wheel.updateMatrixWorld(true);
  const c=Math.min(1,closeT/CLOSE_COLLAPSE),k=c*c*(3-2*c),sIn=Math.max(.0001,1-k),f=Math.min(1,Math.max(0,(closeT-CLOSE_COLLAPSE)/CLOSE_FLY)),e=f*f;
- if(f>=1){wheelClosing=false;wheel.visible=false;resetClose();return}
+ if(f>=1){wheelClosing=false;wheel.visible=false;resetClose();try{exitSearch()}catch(_){}return}
  for(const g of[ring,ringGlow,ringGlow2,disc,spokeLines,wheelTitle,searchBtn,seqStrip,aimDot])if(g)g.scale.setScalar(sIn);
  wheelTitle.position.set(0,.185*sIn,.02);searchBtn.position.set(SEARCH_P.x*sIn,SEARCH_P.y*sIn,.012);seqStrip.position.set(0,-.46*sIn,.015);
  for(const m of emojiMeshes){m.visible=true;m.position.set(m.userData.home.x*sIn,m.userData.home.y*sIn,m.userData.home.z);m.scale.setScalar(sIn)}
@@ -895,7 +895,7 @@ function openSystemKeyboard(kind){
   if(kind==='key'){$('modal').classList.add('open');return}
   kb={kind,t:performance.now(),typed:false,retry:false,desk:true};xrInput.value=kind==='search'?searchQuery:'';kbHeldL=!!keysWasL;setTimeout(()=>{try{xrInput.focus({preventScroll:true})}catch(_){xrInput.focus()}},40);return}
  if(!sess.isSystemKeyboardSupported){vrToast('⌨️ Keyboard unavailable','The Meta keyboard in VR needs Meta Quest Browser 26.1 or newer. Until then, set the key with ⚙️ on the flat page or in the MANUAL CONFIG block.');return}
- kb={kind,t:performance.now(),typed:false,retry:false};xrInput.value=kind==='search'?searchQuery:'';
+ kb={kind,t:performance.now(),typed:false,retry:false};xrInput.value='';
  try{xrInput.focus({preventScroll:true})}catch(_){xrInput.focus()}
  kb.retry=document.activeElement!==xrInput;
  setStatus(kind==='key'?'Type your Meta API key, then press Done.':'Type what to search for, then press Done.')}
