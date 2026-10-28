@@ -10,6 +10,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#e9e9e7;font-family:sy
 #hud{display:none;padding-right:44px !important;position:fixed;left:12px;bottom:12px;z-index:20;max-width:min(520px,calc(100vw - 24px));background:#ffffffdf;border:1px solid #ccc;border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.45;backdrop-filter:blur(6px)}
 #hud.open{display:block}
 #hudX{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:1px solid #bbb;background:#fff;font-size:16px;line-height:1;cursor:pointer;padding:0}
+#hud{max-height:70vh;overflow-y:auto}#hud details{margin:5px 0;border:1px solid #ccc;border-radius:10px;background:#fff;overflow:hidden}#hud summary{cursor:pointer;padding:7px 10px;font-weight:700;font-size:14px;list-style:none}#hud summary::-webkit-details-marker{display:none}#hud summary::after{content:'▸';float:right}#hud details[open] summary{background:#111;color:#fff}#hud details[open] summary::after{content:'▾'}#hud details p{margin:0;padding:8px 10px}
 #hud b{font-size:14px} #seq{font-size:22px;min-height:28px;letter-spacing:2px} #status{color:#555}
 #vrBtn{position:fixed;right:12px;bottom:12px;z-index:20;padding:12px 18px;border-radius:999px;border:0;background:#111;color:#fff;font-weight:700;cursor:pointer}
 #arBtn{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:30;padding:11px 18px;border-radius:999px;border:1px solid #bbb;background:#111;color:#fff;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 10px #0003}
@@ -31,7 +32,15 @@ body.ar-on #c{background:transparent}
 <div id="dptr"></div>
 <button id="cog" title="Settings" aria-label="Settings">⚙️</button>
 <button id="help" title="Tips" aria-label="Tips">?</button>
-<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — Press the <b>index trigger</b> on either controller (desktop: press <b>L</b>) to open the emoji wheel — it opens in that hand and stays open; press again to close it. The golden ball rests in the centre. Point your <i>other</i> controller at the golden ball, hold its trigger (desktop: mouse button) and drag it toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick it. Let go anywhere else — or slide off first — and it returns to the centre. The <b>left thumbstick</b> always walks you around (it does not move the ball), even while the wheel is open. The <b>right thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages. Closing the wheel sends your picks above your head — it stays up for a few seconds, and you can see it in the mirror.<br>Voice: hold <b>index + middle-finger (grip) trigger</b> together on one controller and speak (desktop: hold <b>V</b>) to <b>translate</b> into emoji. Letting go sends; wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel it.<br><b>Translate vs Ask:</b> <b>wheel open + hold the wheel hand's trigger</b> (desktop: hold <b>L</b>), or <b>index + grip together</b> with the wheel closed, = <b>translate</b> into emoji. <b>Wheel closed + hold the index trigger alone</b> = <b>Ask Spark</b> (a direct question, not a translation; in AR it is sent the headset-camera view).<br><b>Ask Spark 🧚:</b> with the wheel <b>closed</b>, <b>hold the index trigger on its own</b> (desktop: hold <b>L</b>) — keep holding, speak your question, then let go. A quick tap still opens the wheel. A ball of light forms in front of you while you speak; when Spark has an answer, the fairy emerges from it and hovers a little way back so she stays in view, answering in emoji (it does <i>not</i> translate — it answers, using what you are looking at).<br><b>AR Mode 📷:</b> tap <b>AR Mode</b> at the top (or the 📷 button in-headset) to switch to headset-camera passthrough — the VR room disappears, the real world is used as the scene, and Ask Spark / voice use that real-world view to infer what you mean.<br><b>Right thumbstick</b> left/right turns you (snap turn, while the wheel is closed).<br><b>Search:</b> with the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and just type, Enter to search) — the Meta keyboard opens; results appear on wheel page 2. <b>Settings in VR:</b> point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). <b>A</b> (right controller) / <b>Space</b> (desktop) jumps. <b>B / Y</b> closes the wheel without sending. With hand tracking, pinch index = trigger, pinch middle finger = grip. On desktop your right arm points wherever the mouse cursor points.<br><div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
+<div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — tap a topic for details
+<details name="hudsec"><summary>🎡 Emoji wheel</summary><p>Press the <b>index trigger</b> on either controller (desktop: press <b>L</b>) to open the wheel — it opens in that hand and stays open; press again to close it and send. The golden ball rests in the centre. Point your <i>other</i> controller at it, hold its trigger (desktop: mouse button) and drag toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick. Let go anywhere else and it returns to the centre. Closing the wheel sends your picks above your head for a few seconds; you can see it in the mirror.</p></details>
+<details name="hudsec"><summary>🧚 Ask Spark</summary><p>With the wheel <b>closed</b>, <b>hold the index trigger on its own</b> (desktop: hold <b>L</b>), speak your question, then let go. A quick tap still opens the wheel. A ball of light forms while you speak, then the fairy emerges and answers in emoji. It does <i>not</i> translate — it answers, using what you are looking at (in AR, the headset-camera view).</p></details>
+<details name="hudsec"><summary>🎙️ Translate to emoji</summary><p>Hold <b>index + grip</b> together on one controller with the wheel closed (desktop: hold <b>V</b>), or <b>hold the trigger of the wheel hand while the wheel is open</b> (desktop: hold <b>L</b> with the wheel open). Speak, then let go to send. Wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel.</p></details>
+<details name="hudsec"><summary>📷 AR / VR</summary><p>Tap <b>AR Mode</b> at the top (or the 📷 button in-headset) to switch between the virtual room and the real world through the headset cameras, without leaving the headset. Ask Spark uses that real-world view.</p></details>
+<details name="hudsec"><summary>🕹️ Moving &amp; pages</summary><p>The <b>left thumbstick</b> (desktop: <b>WASD</b>, drag to look) walks you around, even with the wheel open. The <b>right thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages, or snap-turns you when the wheel is closed. <b>A</b> (right controller) / <b>Space</b> (desktop) jumps. <b>B / Y</b> closes the wheel without sending.</p></details>
+<details name="hudsec"><summary>🔍 Search</summary><p>With the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and type, Enter to search). Results appear on wheel page 2 and clear when the wheel closes.</p></details>
+<details name="hudsec"><summary>⚙️ Settings &amp; hands</summary><p>In VR, point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). With hand tracking, pinch index = trigger and pinch middle finger = grip. On desktop your right arm points wherever the mouse cursor points.</p></details>
+<div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
 <button id="arBtn" title="AR mode — use headset cameras (passthrough) instead of the VR room">📷 AR Mode</button>
 <button id="vrBtn">Enter VR</button>
 <div id="err"></div>
@@ -485,9 +494,31 @@ function uiButton(label,x){const cv=document.createElement('canvas');cv.width=cv
  const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=MAXA;
  const m=new THREE.Mesh(new THREE.CircleGeometry(.055,48),new THREE.MeshBasicMaterial({map:t,transparent:true,depthTest:false}));m.position.set(x,.33,-.9);m.renderOrder=999;m.userData.btn=label;m.userData.hit=[.095,.095];ui.add(m);uiBtns.push(m);return m}
 uiButton('⚙️',-.32);uiButton('📷',0);uiButton('?',.32);
-const helpPanel=textPanel(1.0,.68,1000,680,2),cogPanel=textPanel(1.0,.68,1000,680,2);
+const helpPanel=textPanel(1.0,.72,1000,720,2),cogPanel=textPanel(1.0,.68,1000,680,2);
 for(const p of[helpPanel,cogPanel]){p.visible=false;p.position.set(0,.02,-.95);p.renderOrder=998;p.material.depthTest=false;ui.add(p)}
-helpPanel.userData.draw('? Tips','Tap index trigger = open / close the emoji wheel. HOLD index trigger alone (wheel closed) = Ask Spark (in AR it gets the headset camera view). HOLD the trigger of the wheel hand while the wheel is open, or index + grip, = translate to emoji. Ask Spark: speak a question, release, a ball of light forms in front of you and the 🧚 fairy emerges from it to answer in emoji. 📷 at the top = AR passthrough mode (real world via headset cameras). Index trigger on either controller = open / close the emoji wheel. Grab the ball with your other pointer and drag it to an emoji to pick. Left thumbstick = walk (it does not move the ball). Right thumbstick left/right = pages. Right thumbstick (wheel closed) = turn. search box on the wheel (point with your other controller) = search emoji with the Meta keyboard. Index + grip together = voice: speak, let go to send, wave your free hand through the box to cancel. Point at ? or ⚙️ and pull the trigger to close this.');
+const HELP_SECS=[
+ ['🎡 Emoji wheel','Tap the index trigger to open the wheel in that hand; tap it again to close and send your picks above your head. Hold the golden ball with your OTHER controller\'s pointer + trigger, drag it to an emoji until it turns green, and let go to pick it.'],
+ ['🧚 Ask Spark','With the wheel closed, HOLD the index trigger on its own, speak your question, then let go. A ball of light forms and the fairy emerges to answer in emoji. In AR she also sees what your headset camera sees.'],
+ ['🎙️ Translate to emoji','Hold index + grip together on one controller (wheel closed), or hold the trigger of the wheel hand while the wheel is open. Speak, then let go to send. Wave your free hand in front of you to cancel.'],
+ ['📷 AR / VR','The 📷 button at the top switches between the virtual room and the real world through your headset cameras, without leaving the headset.'],
+ ['🕹️ Moving & pages','Left thumbstick walks. Right thumbstick left/right flips wheel pages, or turns you when the wheel is closed. A jumps. B / Y closes the wheel without sending.'],
+ ['🔍 Search','With the wheel open, point your other controller at the search box under the page name and pull the trigger. Type with the Meta keyboard; results show on page 2. The search clears when the wheel closes.'],
+ ['⚙️ Settings','Point at ⚙️ and pull the trigger, then tap ✏️ to type your Meta API key with the Meta keyboard (Quest Browser 26.1+).']];
+let helpOpen=-1;const helpCv=helpPanel.material.map.image,HELP_ROW=64,HELP_TOP=78,helpHits=[];
+function helpWrap(g,text,maxW){const out=[];let line='';for(const wd of text.split(/\s+/)){const t=line?line+' '+wd:wd;if(g.measureText(t).width>maxW&&line){out.push(line);line=wd}else line=t}if(line)out.push(line);return out}
+function drawHelp(){const g=helpCv.getContext('2d'),W=1000,H=720;g.clearRect(0,0,W,H);
+ g.fillStyle='rgba(255,255,255,.96)';g.beginPath();g.roundRect(0,0,W,H,36);g.fill();g.strokeStyle='#111';g.lineWidth=6;g.stroke();
+ g.fillStyle='#111';g.textBaseline='alphabetic';g.font='700 42px system-ui';g.fillText('? Tips — tap a topic',36,56);
+ let y=HELP_TOP;
+ HELP_SECS.forEach((sec,i)=>{const open=i===helpOpen;
+  g.fillStyle=open?'#111':'#f1f1ee';g.beginPath();g.roundRect(28,y,W-56,HELP_ROW-8,20);g.fill();g.strokeStyle=open?'#ffd34d':'#bbb';g.lineWidth=4;g.stroke();
+  g.fillStyle=open?'#fff':'#111';g.font='700 34px system-ui';g.textBaseline='middle';g.fillText(sec[0],52,y+(HELP_ROW-8)/2+2);g.textAlign='right';g.fillText(open?'▾':'▸',W-52,y+(HELP_ROW-8)/2+2);g.textAlign='left';g.textBaseline='alphabetic';
+  const hit=helpHits[i];if(hit)hit.position.y=.02+(H/2-(y+(HELP_ROW-8)/2))/1000;
+  y+=HELP_ROW;
+  if(open){g.fillStyle='#222';g.font='30px system-ui';const lines=helpWrap(g,sec[1],W-120);lines.forEach((ln,k)=>g.fillText(ln,52,y+30+k*38));y+=lines.length*38+22}});
+ g.fillStyle='#777';g.font='26px system-ui';g.fillText('Point at an empty part of this box (or the ?) and pull the trigger to close.',36,H-18);
+ helpPanel.material.map.needsUpdate=true}
+function toggleHelpSec(i){helpOpen=helpOpen===i?-1:i;drawHelp()}
 let panelOpen=null;
 
 function uiRectBtn(id,label,x,y,w,h){const W=512,H=Math.round(512*h/w),cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');
@@ -497,14 +528,16 @@ function uiRectBtn(id,label,x,y,w,h){const W=512,H=Math.round(512*h/w),cv=docume
  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true,depthTest:false}));
  m.position.set(x,y,-.94);m.renderOrder=1000;m.visible=false;m.userData.btn=id;m.userData.hit=[w/2+.01,h/2+.01];m.userData.hs=1.08;ui.add(m);return m}
 const cogBtns=[uiRectBtn('editKey','✏️ Enter API key',-.24,-.22,.42,.1),uiRectBtn('clearKey','🗑️ Clear key',.24,-.22,.42,.1)];
-const uiTargets=[...uiBtns,...cogBtns];
+for(let i=0;i<HELP_SECS.length;i++){const hm=new THREE.Mesh(new THREE.PlaneGeometry(.94,(HELP_ROW-8)/1000),new THREE.MeshBasicMaterial({visible:false}));hm.position.set(0,.02,-.94);hm.visible=false;hm.userData.btn='help:'+i;hm.userData.hit=[.47,(HELP_ROW-8)/2000];hm.userData.hs=1;ui.add(hm);helpHits.push(hm)}
+drawHelp();
+const uiTargets=[...uiBtns,...cogBtns,...helpHits];
 
 const toast=textPanel(.9,.3,900,300,2);toast.position.set(0,-.3,-.9);toast.visible=false;toast.renderOrder=1001;toast.material.depthTest=false;ui.add(toast);
 let toastUntil=0;function vrToast(title,body){return;if(!renderer.xr.isPresenting)return;toast.userData.draw(title,body);toast.visible=true;toastUntil=performance.now()+6000}
 function drawCog(typing){const k=settings.key;
  const st=typing!=null?'typing… '+typing+' characters':(k?'set ✓ (•••• '+k.slice(-4)+', '+k.length+' chars)':'NOT SET ✗ — voice is off');
  cogPanel.userData.draw('⚙️ Settings','Meta API key: '+st+'. Speech goes to Muse Voice Transcribe, the text to Muse Spark ('+settings.model+'). Tap ✏️ to type the key with the Meta keyboard — type the whole key, it replaces the old one. Point at ⚙️ or an empty part of this panel and pull the trigger to close.'+(CONFIG.META_API_KEY?' (A key in MANUAL CONFIG overrides this on reload.)':''))}
-function setPanel(name){panelOpen=panelOpen===name?null:name;helpPanel.visible=panelOpen==='help';cogPanel.visible=panelOpen==='cog';for(const b of cogBtns)b.visible=panelOpen==='cog';if(panelOpen==='cog')drawCog()}
+function setPanel(name){panelOpen=panelOpen===name?null:name;helpPanel.visible=panelOpen==='help';cogPanel.visible=panelOpen==='cog';for(const b of cogBtns)b.visible=panelOpen==='cog';if(panelOpen==='help'){helpOpen=-1;drawHelp()}for(const b of helpHits)b.visible=panelOpen==='help';if(panelOpen==='cog')drawCog()}
 
 let recog=null,listening=false,transcript='',silenceTimer=null,mediaRec=null,mediaChunks=[],voiceMode='translate';
 
@@ -879,7 +912,7 @@ function uiPick(c){c.getWorldPosition(_uo);c.getWorldQuaternion(_uq);_ud.set(0,0
  if(panelOpen){const t=(-.95-_uo.z)/_ud.z;if(t>0){const x=_uo.x+_ud.x*t,y=_uo.y+_ud.y*t;if(Math.abs(x)<.52&&Math.abs(y-.02)<.36)return panelHit}}
  return null}
 function uiPress(h){const hit=uiHoverNow[h];if(!hit||uiPressed[h])return false;uiPressed[h]=true;uiConsumed[h]=true;const id=hit.userData.btn;
- if(id==='⚙️')setPanel('cog');else if(id==='?')setPanel('help');else if(id==='📷')toggleAR();else if(id==='panel')setPanel(panelOpen);
+ if(id==='⚙️')setPanel('cog');else if(id==='?')setPanel('help');else if(id==='📷')toggleAR();else if(typeof id==='string'&&id.indexOf('help:')===0)toggleHelpSec(+id.slice(5));else if(id==='panel')setPanel(panelOpen);
  else if(id==='editKey')openSystemKeyboard('key');else if(id==='clearKey')clearKey();
  haptic(h,.7,40);return true}
 
