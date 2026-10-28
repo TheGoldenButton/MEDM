@@ -40,6 +40,7 @@ body.ar-on #c{background:transparent}
 <details name="hudsec"><summary>🕹️ Moving &amp; pages</summary><p>The <b>left thumbstick</b> (desktop: <b>WASD</b>, drag to look) walks you around, even with the wheel open. The <b>right thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages, or snap-turns you when the wheel is closed. <b>A</b> (right controller) / <b>Space</b> (desktop) jumps. <b>B / Y</b> closes the wheel without sending.</p></details>
 <details name="hudsec"><summary>🔍 Search</summary><p>With the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and type, Enter to search). Results appear on wheel page 2 and clear when the wheel closes.</p></details>
 <details name="hudsec"><summary>⚙️ Settings &amp; hands</summary><p>In VR, point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). With hand tracking, pinch index = trigger and pinch middle finger = grip. On desktop your right arm points wherever the mouse cursor points.</p></details>
+<details name="hudsec"><summary>🙂 Face, eyes &amp; hands</summary><p>Your avatar's <b>mouth moves as you talk</b> (microphone lip-sync, with wide smiles on "ee"/"s" sounds and rounded lips on "oo"), it <b>blinks</b>, its <b>eyes follow</b> the wheel or fairy, and the <b>brows and smile react</b> to the emoji you send. If your headset exposes WebXR face tracking (e.g. Quest Pro) the real expression data takes over. <b>Fingers</b> curl with your trigger, grip and thumb. Turn the mic lip-sync off in ⚙️.</p></details>
 <div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
 <button id="arBtn" title="AR mode — use headset cameras (passthrough) instead of the VR room">📷 AR Mode</button>
 <button id="vrBtn">Enter VR</button>
@@ -50,6 +51,7 @@ body.ar-on #c{background:transparent}
 <label>Muse Voice Transcribe endpoint</label><input id="kTransUrl" type="text">
 <label>Muse Spark endpoint</label><input id="kSparkUrl" type="text">
 <label>Muse Spark model</label><input id="kSparkModel" type="text">
+<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="kLip" type="checkbox" style="width:auto"> Lip-sync &amp; expressions from microphone (mouth moves when you talk)</label>
 <div><button id="saveSet">Save</button> <button id="closeSet" class="ghost">Close</button> <button id="clearSet" class="ghost">Clear key</button></div>
 <p class="note">Spark receives one message: for translation, a short instruction to translate what you said into an emoji sequence of 12 or less; for Ask Spark (trigger-hold, wheel closed), an instruction to actually answer your question helpfully as a separate assistant, using the scene image for context. Lewd or hateful content is not translated.</p></div></div>
 
@@ -133,13 +135,13 @@ for(const k of['museTransUrl','museSparkUrl','museSparkModel'])if(STALE.includes
 const CONFIG=window.MANUAL_CONFIG||{};
 const settings={key:CONFIG.META_API_KEY||localStorage.getItem('museMetaApiKey')||'',transUrl:CONFIG.TRANSCRIBE_URL||localStorage.getItem('museTransUrl')||DEF_T,sparkUrl:CONFIG.SPARK_URL||localStorage.getItem('museSparkUrl')||DEF_S,model:CONFIG.SPARK_MODEL||localStorage.getItem('museSparkModel')||'muse-spark-1.3'};
 const $=id=>document.getElementById(id);
-$('kMeta').value=settings.key;$('kTransUrl').value=settings.transUrl;$('kSparkUrl').value=settings.sparkUrl;$('kSparkModel').value=settings.model;
+$('kMeta').value=settings.key;$('kTransUrl').value=settings.transUrl;$('kSparkUrl').value=settings.sparkUrl;$('kSparkModel').value=settings.model;$('kLip').checked=localStorage.getItem('lipSync')!=='0';
 $('help').onclick=()=>$('hud').classList.toggle('open');
 $('hudX').onclick=()=>$('hud').classList.remove('open');
 $('cog').onclick=()=>$('modal').classList.add('open');
 $('closeSet').onclick=()=>$('modal').classList.remove('open');
 $('clearSet').onclick=()=>{$('kMeta').value='';};
-$('saveSet').onclick=()=>{settings.key=$('kMeta').value.trim();settings.transUrl=$('kTransUrl').value.trim()||DEF_T;settings.sparkUrl=$('kSparkUrl').value.trim()||DEF_S;settings.model=$('kSparkModel').value.trim()||'muse-spark-1.3';localStorage.setItem('museMetaApiKey',settings.key);localStorage.setItem('museTransUrl',settings.transUrl);localStorage.setItem('museSparkUrl',settings.sparkUrl);localStorage.setItem('museSparkModel',settings.model);$('modal').classList.remove('open');setStatus(settings.key?'Meta API key saved. Voice will use Muse Voice Transcribe + Muse Spark.':'Settings saved (no key — local voice fallback).');};
+$('saveSet').onclick=()=>{settings.key=$('kMeta').value.trim();settings.transUrl=$('kTransUrl').value.trim()||DEF_T;settings.sparkUrl=$('kSparkUrl').value.trim()||DEF_S;settings.model=$('kSparkModel').value.trim()||'muse-spark-1.3';localStorage.setItem('museMetaApiKey',settings.key);localStorage.setItem('museTransUrl',settings.transUrl);localStorage.setItem('museSparkUrl',settings.sparkUrl);localStorage.setItem('museSparkModel',settings.model);try{localStorage.setItem('lipSync',$('kLip').checked?'1':'0')}catch(_){}lip.tried=false;if($('kLip').checked)startLipSync();else stopLipSync();$('modal').classList.remove('open');setStatus(settings.key?'Meta API key saved. Voice will use Muse Voice Transcribe + Muse Spark.':'Settings saved (no key — local voice fallback).');};
 
 const canvas=$('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
@@ -253,13 +255,19 @@ function makeHuman(){
 
   for(const s of[-1,1])for(let k=0;k<3;k++){const c=new THREE.Mesh(new THREE.SphereGeometry(.018,10,8),mats[k]);c.position.set(s*.1,.03-k*.026,-.02+k*.006);head.add(c)}}
  const nose=new THREE.Mesh(new THREE.SphereGeometry(.016,12,10),skinDark);nose.scale.set(.7,1.4,.95);nose.position.set(0,-.012,-.104);head.add(nose);
- for(const s of[-1,1]){
+ const F={};
+ for(const s of[-1,1]){const k=s<0?'L':'R';
   const ew=new THREE.Mesh(new THREE.SphereGeometry(.0125,12,10),eyeWhite);ew.scale.set(1.15,.8,.6);ew.position.set(s*.038,.022,-.096);head.add(ew);
-  const eye=new THREE.Mesh(new THREE.SphereGeometry(.0075,10,8),eyeMat);eye.position.set(s*.038,.022,-.1);head.add(eye);
-  const brow=new THREE.Mesh(new THREE.BoxGeometry(.03,.0045,.005),hairMat);brow.position.set(s*.039,.042,-.10);brow.rotation.z=-s*.05;head.add(brow);
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(.0075,10,8),eyeMat);eye.position.set(s*.038,.022,-.1);eye.userData.b=eye.position.clone();head.add(eye);F['eye'+k]=eye;
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(.03,.019,.003),skin);lid.position.set(s*.038,.0315,-.1085);lid.visible=false;head.add(lid);F['lid'+k]=lid;
+  const brow=new THREE.Mesh(new THREE.BoxGeometry(.03,.0045,.005),hairMat);brow.position.set(s*.039,.042,-.10);brow.rotation.z=-s*.05;brow.userData.rz=-s*.05;brow.userData.s=s;head.add(brow);F['brow'+k]=brow;
   const ear=new THREE.Mesh(new THREE.SphereGeometry(.02,10,8),skin);ear.scale.set(.45,1,.7);ear.position.set(s*.102,-.005,0);head.add(ear);
  }
- const mouth=new THREE.Mesh(new THREE.BoxGeometry(.03,.0042,.005),lipMat);mouth.position.set(0,-.062,-.096);mouth.rotation.z=.04;head.add(mouth);
+ const mg=new THREE.Group();mg.position.set(0,-.062,-.096);head.add(mg);F.mouth=mg;F.jaw=jaw;
+ const inner=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),new THREE.MeshStandardMaterial({color:0x3a1a1c,roughness:.8}));inner.visible=false;inner.position.z=.002;mg.add(inner);F.inner=inner;
+ const upLip=new THREE.Mesh(new THREE.BoxGeometry(.03,.0042,.005),lipMat);mg.add(upLip);F.upLip=upLip;
+ const loLip=new THREE.Mesh(new THREE.BoxGeometry(.03,.0042,.005),lipMat);loLip.position.y=-.0042;mg.add(loLip);F.loLip=loLip;
+ for(const k of['L','R']){const c=new THREE.Mesh(new THREE.SphereGeometry(.0046,8,6),lipMat);mg.add(c);F['corner'+k]=c}
 
  const mkHand=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),skin));m.scale.set(.9,.5,1.35);return m};
  const mkShoe=()=>{const grp=new THREE.Group();g.add(grp);
@@ -269,6 +277,22 @@ function makeHuman(){
   const stripe=new THREE.Mesh(new THREE.BoxGeometry(.09,.004,.028),stringMat);stripe.position.set(0,.009,-.075);grp.add(stripe);
   const sock=new THREE.Mesh(new THREE.BoxGeometry(.07,.028,.13),sockMat);sock.position.set(0,.017,-.04);grp.add(sock);
   return grp};
+ const mkFingers=sg=>{const grp=new THREE.Group();g.add(grp);const fs=[];
+  const ball=(r,par,x=0,y=0,z=0)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),skin);m.position.set(x,y,z);m.castShadow=true;par.add(m);return m};
+  const seg=(l,r0,r1,par)=>{const geo=new THREE.CylinderGeometry(r1,r0,l,14);geo.rotateX(-Math.PI/2);geo.translate(0,0,-l/2);const m=new THREE.Mesh(geo,skin);m.scale.y=.88;m.castShadow=true;par.add(m);return m};
+  const barGeo=new THREE.CapsuleGeometry(.011,.052,4,12);barGeo.rotateZ(Math.PI/2);const bar=new THREE.Mesh(barGeo,skin);bar.position.set(0,.002,-.046);bar.scale.y=.85;bar.castShadow=true;grp.add(bar);
+  const pad=ball(.021,grp,-sg*.03,-.003,-.004);pad.scale.set(1,.68,1.35);
+  const heel=ball(.03,grp,0,-.002,.03);heel.scale.set(1,.55,.9);
+  const specs=[[-sg*.027,-.047,.030,.021,.017,.0103],[-sg*.009,-.051,.034,.024,.018,.0109],[sg*.009,-.049,.032,.022,.017,.0105],[sg*.027,-.044,.025,.017,.015,.0093]];
+  for(const[x,z,l1,l2,l3,r]of specs){
+   const p1=new THREE.Group();p1.position.set(x,0,z);grp.add(p1);ball(r*1.04,p1);seg(l1,r,r*.88,p1);
+   const p2=new THREE.Group();p2.position.z=-l1;p1.add(p2);ball(r*.9,p2);seg(l2,r*.88,r*.8,p2);
+   const p3=new THREE.Group();p3.position.z=-l2;p2.add(p3);ball(r*.8,p3);seg(l3,r*.8,r*.72,p3);ball(r*.73,p3,0,0,-l3);
+   fs.push({p1,p2,p3,x})}
+  const t1=new THREE.Group();t1.position.set(-sg*.032,-.004,-.016);t1.rotation.y=sg*.55;grp.add(t1);ball(.0135,t1);seg(.028,.0128,.0108,t1);
+  const t2=new THREE.Group();t2.position.z=-.028;t1.add(t2);ball(.0105,t2);seg(.024,.0108,.0088,t2);ball(.0088,t2,0,0,-.024);
+  fs.push({p1:t1,p2:t2,th:1,baseY:sg*.55});
+  grp.userData.fs=fs;grp.userData.c=[0,0,0,0,0];grp.userData.sg=sg;return grp};
  const parts={
   torso,pelvis,neck,head,upper,
   body:limbMesh(.001,.001,shirt),clav:limbMesh(.001,.001,shirt),clavL:limbMesh(.056,.05,shirt),clavR:limbMesh(.056,.05,shirt),
@@ -277,7 +301,7 @@ function makeHuman(){
   legL:limbMesh(.001,.001,pants),legR:limbMesh(.001,.001,pants),
   jShL:joint(.07,shirt),jShR:joint(.07,shirt),jElL:joint(.043,shirt),jElR:joint(.043,shirt),
   jKnL:joint(.044,pants),jKnR:joint(.044,pants),jHaL:mkHand(),jHaR:mkHand(),jNk:joint(.05,skin),jWrL:joint(.031,skin),jWrR:joint(.031,skin),
-  footL:mkShoe(),footR:mkShoe()};
+  footL:mkShoe(),footR:mkShoe(),fingL:mkFingers(-1),fingR:mkFingers(1),face:F};
  parts.body.visible=false;parts.clav.visible=false;parts.legL.visible=false;parts.legR.visible=false;
  g.userData.parts=parts;return g}
 const makeStick=makeHuman;
@@ -304,8 +328,8 @@ const ctrlHand={left:ctrlL,right:ctrlR};
 const handL=renderer.xr.getHand(0),handR=renderer.xr.getHand(1);rig.add(handL,handR);
 
 const handPinch={left:false,right:false},handSqz={left:false,right:false};
-function sourceFor(handedness){let found={pad:null,trigger:false,squeeze:false,aBtn:false,bBtn:false,stick:[0,0],src:null};
- for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.squeezeV=gp.buttons[1]?.value||0;found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);found.aOnly=!!gp.buttons[4]?.pressed;found.bBtn=!!gp.buttons[5]?.pressed;const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}else{found.trigger=!!handPinch[handedness];found.squeeze=!!handSqz[handedness]}}return found}
+function sourceFor(handedness){let found={pad:null,trigger:false,squeeze:false,triggerV:0,squeezeV:0,thumbOn:false,aBtn:false,bBtn:false,stick:[0,0],src:null};
+ for(const s of renderer.xr.getSession()?.inputSources||[]){if(s.handedness!==handedness)continue;found.src=s;const gp=s.gamepad;if(gp){found.pad=gp;found.trigger=!!gp.buttons[0]?.pressed;found.squeeze=!!gp.buttons[1]?.pressed;found.squeezeV=gp.buttons[1]?.value||0;found.triggerV=gp.buttons[0]?.value||0;found.thumbOn=!!(gp.buttons[3]?.touched||gp.buttons[3]?.pressed||gp.buttons[4]?.touched||gp.buttons[5]?.touched||gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);found.aBtn=!!(gp.buttons[4]?.pressed||gp.buttons[5]?.pressed);found.aOnly=!!gp.buttons[4]?.pressed;found.bBtn=!!gp.buttons[5]?.pressed;const ax=gp.axes.length>=4?[gp.axes[2],gp.axes[3]]:[gp.axes[0]||0,gp.axes[1]||0];found.stick=ax}else{found.trigger=!!handPinch[handedness];found.squeeze=!!handSqz[handedness];found.triggerV=found.trigger?1:0;found.squeezeV=found.squeeze?1:0}}return found}
 
 function haptic(h,val,ms){try{const gp=sourceFor(h).src?.gamepad;if(!gp)return;const a=gp.hapticActuators&&gp.hapticActuators[0];
  if(a&&a.pulse){a.pulse(val,ms);return}if(gp.vibrationActuator&&gp.vibrationActuator.playEffect)gp.vibrationActuator.playEffect('dual-rumble',{duration:ms,strongMagnitude:val,weakMagnitude:val})}catch(_){}}
@@ -467,7 +491,7 @@ function billboard(r,sc,cam){
  this.position.set(Math.cos(yaw)*ox,oy,-Math.sin(yaw)*ox);this.rotation.set(0,yaw,0);this.scale.set(sg*u.sc,u.sc,u.sc);
  this.updateMatrix();this.matrixWorld.multiplyMatrices(g.matrixWorld,this.matrix)}
 function popSequence(list){
- list=list.slice(0,MAX_EMOJI);if(!list.length)return;
+ list=list.slice(0,MAX_EMOJI);if(!list.length)return;try{triggerEmote(list)}catch(_){}
 
  {let total=list.length;for(let i=overheadAnims.length-1;i>=0;i--){const o=overheadAnims[i];if(o.leaving)continue;total+=o.n;if(total>MAX_EMOJI){const el=performance.now()-o.start;o.leaving=true;o.fade=350;o.life=Math.min(o.life,el+350)}}}
  const g=new THREE.Group();scene.add(g);
@@ -847,7 +871,7 @@ function applyARMode(on){arMode=!!on;document.body.classList.toggle('ar-on',arMo
  scene.background=arMode?null:new THREE.Color(0xe9e9e7);scene.fog=arMode?null:new THREE.Fog(0xe9e9e7,12,26);renderer.setClearColor(0x000000,arMode?0:1);
  for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){if(!(renderer.xr.isPresenting&&xrSessionMode==='immersive-ar'))stopSnapCam();v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
  setStatus(arMode?'📷 AR mode — real world via headset cameras. Hold the trigger (wheel closed) and ask Spark about what you see.':'VR mode — back in the virtual room.')}
-async function enterXR(kind){if(!navigator.xr){
+async function enterXR(kind){startLipSync();if(!navigator.xr){
    if(kind==='ar'){if(arMode){applyARMode(false);return true}try{arCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});const v=$('arCam');v.srcObject=arCamStream;v.style.display='block';applyARMode(true);return true}catch(e){setStatus('AR needs a headset (or camera permission): '+e.message)}return false}
    setStatus('WebXR not available in this browser — desktop preview still works.');return false}
  try{let mode=kind==='ar'?'immersive-ar':'immersive-vr';
@@ -855,7 +879,7 @@ async function enterXR(kind){if(!navigator.xr){
   if(kind==='vr'){try{if(await navigator.xr.isSessionSupported('immersive-ar'))mode='immersive-ar'}catch(_){}}
   const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
   let gotCam=false;if(mode==='immersive-ar')gotCam=await startSnapCam();
-  const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access']});
+  const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access','face-tracking','eye-tracking']});
   renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0);
   xrSessionMode=mode;session.addEventListener('end',()=>{xrSessionMode=null;applyARMode(false);stopSnapCam();$('vrBtn').textContent='Enter VR'});
   await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message+(kind==='ar'&&arSnapStream?' — camera was just allowed; tap 📷 AR Mode once more.':''));return false}}
@@ -987,6 +1011,94 @@ function deskPoint(sh){
  _ptPos.copy(sh).addScaledVector(_aimLoc,THREE.MathUtils.clamp(dist-.1,.28,.6));
  _ptQ.setFromUnitVectors(_negZ,_aimLoc);
  return true}
+/* ---------- face / expression system ---------- */
+const ex={jaw:0,smile:0,frown:0,pucker:0,blinkL:0,blinkR:0,brow:0,browIn:0,angry:0,cheek:0};
+const emote={until:0,dur:1,jaw:0,smile:0,frown:0,brow:0,angry:0};
+const EM_SMILE=['😀','😂','😍','😎','🥰','😊','🙂','😁','🤣','😄','😃','😆','🥳','😉','😋','🤩','❤','👍','🎉','🙌','👏','😇'];
+const EM_SAD=['😢','😭','😞','😔','🥺','😟','😥','😓','💔','😰'];
+const EM_ANGRY=['😡','😠','🤬','😤','😈','👿'];
+const EM_SURP=['😮','😲','😱','😳','🤯','😨','🫢'];
+function triggerEmote(list){const c={smile:0,sad:0,angry:0,surp:0};
+ for(const e0 of list){const e=e0.replace(/️/g,'');if(EM_SMILE.some(x=>e.startsWith(x)))c.smile++;else if(EM_SAD.some(x=>e.startsWith(x)))c.sad++;else if(EM_ANGRY.some(x=>e.startsWith(x)))c.angry++;else if(EM_SURP.some(x=>e.startsWith(x)))c.surp++}
+ const top=Object.entries(c).sort((a,b)=>b[1]-a[1])[0];if(!top||!top[1])return;
+ emote.jaw=emote.smile=emote.frown=emote.brow=emote.angry=0;
+ if(top[0]==='smile'){emote.smile=1;emote.brow=.3}else if(top[0]==='sad'){emote.frown=1;emote.brow=.2}else if(top[0]==='angry'){emote.angry=1;emote.frown=.5}else{emote.jaw=.7;emote.brow=1}
+ emote.dur=3800;emote.until=performance.now()+emote.dur}
+
+const lip={ctx:null,an:null,td:null,fd:null,stream:null,tried:false,jaw:0,hiR:.3,smile:0,pucker:0};
+const lipEnabled=()=>{try{return localStorage.getItem('lipSync')!=='0'}catch(_){return true}};
+async function startLipSync(){if(lip.an||lip.tried||!lipEnabled()||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;lip.tried=true;
+ try{const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false}});
+  const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC();try{await ctx.resume()}catch(_){}
+  const an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=.4;ctx.createMediaStreamSource(st).connect(an);
+  lip.ctx=ctx;lip.an=an;lip.stream=st;lip.td=new Float32Array(an.fftSize);lip.fd=new Uint8Array(an.frequencyBinCount);setStatus('🎤 Lip-sync on — your avatar\'s mouth follows your voice.')}
+ catch(e){console.warn('[lipsync]',e);setStatus('Lip-sync unavailable (microphone not allowed): '+e.message)}}
+function stopLipSync(){if(lip.stream)lip.stream.getTracks().forEach(t=>t.stop());try{lip.ctx&&lip.ctx.close()}catch(_){}lip.ctx=lip.an=lip.stream=null;lip.jaw=lip.smile=lip.pucker=0}
+const clampN=(x,a,b)=>Math.min(b,Math.max(a,x));
+function sampleLip(dt){if(!lip.an)return;lip.an.getFloatTimeDomainData(lip.td);let sum=0;for(let i=0;i<lip.td.length;i++)sum+=lip.td[i]*lip.td[i];const rms=Math.sqrt(sum/lip.td.length);
+ lip.an.getByteFrequencyData(lip.fd);const bh=lip.ctx.sampleRate/lip.an.fftSize;let lo=0,nl=0,hi=0,nh=0;
+ for(let i=Math.floor(200/bh);i<=Math.floor(900/bh);i++){lo+=lip.fd[i];nl++}for(let i=Math.floor(2500/bh);i<=Math.floor(6000/bh)&&i<lip.fd.length;i++){hi+=lip.fd[i];nh++}
+ lo/=Math.max(1,nl);hi/=Math.max(1,nh);const tgt=clampN((rms-.01)*15,0,1);
+ lip.jaw+=(tgt-lip.jaw)*Math.min(1,dt*(tgt>lip.jaw?32:11));
+ lip.hiR+=(hi/(lo+hi+1)-lip.hiR)*Math.min(1,dt*10);
+ lip.smile=clampN((lip.hiR-.22)*4,0,1)*lip.jaw;lip.pucker=clampN((.14-lip.hiR)*7,0,1)*lip.jaw}
+
+/* WebXR face tracking adapter: accepts ARKit-style or OpenXR-style expression names from whatever shape the browser exposes */
+function trackedFace(frame){
+ if(!frame)return null;let src=null;
+ try{src=frame.trackedFace||(typeof frame.getFace==='function'?frame.getFace():null)||(frame.session&&frame.session.trackedFaces&&frame.session.trackedFaces[0])||null}catch(_){}
+ if(!src)return null;const raw=src.expressions||src.blendShapes||src.weights||src;
+ const get=(...n)=>{for(const k of n){let v;try{v=typeof raw.get==='function'?raw.get(k):raw[k]}catch(_){}if(typeof v==='number')return v}return undefined};
+ const o={},set=(k,v)=>{if(v!==undefined)o[k]=clampN(v,0,1)},avg=(a,b)=>a===undefined?b:(b===undefined?a:(a+b)/2);
+ set('jaw',get('jawOpen','JAW_DROP','jaw-open'));
+ set('smile',avg(get('mouthSmileLeft','LIP_CORNER_PULLER_L','mouth-smile-left'),get('mouthSmileRight','LIP_CORNER_PULLER_R','mouth-smile-right')));
+ set('frown',avg(get('mouthFrownLeft','LIP_CORNER_DEPRESSOR_L'),get('mouthFrownRight','LIP_CORNER_DEPRESSOR_R')));
+ set('pucker',get('mouthPucker','mouthFunnel','LIP_PUCKER_L','LIP_FUNNELER_LB'));
+ set('blinkL',get('eyeBlinkLeft','EYES_CLOSED_L','eye-blink-left'));set('blinkR',get('eyeBlinkRight','EYES_CLOSED_R','eye-blink-right'));
+ set('browIn',get('browInnerUp','INNER_BROW_RAISER_L'));
+ set('brow',avg(get('browOuterUpLeft','OUTER_BROW_RAISER_L'),get('browOuterUpRight','OUTER_BROW_RAISER_R')));
+ set('angry',avg(get('browDownLeft','BROW_LOWERER_L'),get('browDownRight','BROW_LOWERER_R')));
+ set('cheek',get('cheekPuff'));
+ return Object.keys(o).length?o:null}
+
+let deskPointing=false,blinkTimer=2,blinkT=0,gazeT=0,gx=0,gy=0;const gazeOff={x:0,y:0},_gv=new THREE.Vector3();
+function updateFace(dt,t){const F=_avP.face,now=performance.now();if(!F)return;
+ sampleLip(dt);
+ const T={jaw:lip.jaw,smile:lip.smile*.8+.06,frown:0,pucker:lip.pucker,blinkL:0,blinkR:0,brow:lip.jaw*.12,browIn:0,angry:0,cheek:0};
+ const eo=now<emote.until?Math.min(1,(emote.until-now)/600,(emote.dur-(emote.until-now))/150+.2):0;
+ if(eo>0){T.smile=Math.max(T.smile,emote.smile*eo);T.frown=Math.max(T.frown,emote.frown*eo);T.jaw=Math.max(T.jaw,emote.jaw*eo);T.brow=Math.max(T.brow,emote.brow*eo);T.angry=Math.max(T.angry,emote.angry*eo);T.browIn=Math.max(T.browIn,emote.frown*eo*.8)}
+ blinkTimer-=dt;if(blinkTimer<=0){blinkT=.17;blinkTimer=1.8+Math.random()*4.5;if(Math.random()<.18)blinkTimer=.25}
+ let bl=0;if(blinkT>0){blinkT-=dt;const p=1-Math.max(0,blinkT)/.17;bl=p<.4?p/.4:(1-p)/.6}T.blinkL=T.blinkR=clampN(bl,0,1);
+ const tr=trackedFace(lastXRFrame);if(tr)for(const k in tr)T[k]=tr[k];
+ for(const k in ex)ex[k]+=(T[k]-ex[k])*Math.min(1,dt*(k.indexOf('blink')===0?40:18));
+
+ const w=.03*(1+.45*ex.smile-.4*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile,loY=-.0042-.024*open+.001*ex.smile;
+ F.upLip.position.y=upY;F.loLip.position.y=loY;F.upLip.scale.set(w/.03,1+ex.pucker*.8,1);F.loLip.scale.set(w/.03,1+ex.pucker*.8,1);
+ F.mouth.position.y=-.062-.002*ex.frown;
+ const gap=Math.max(.0005,upY-loY-.0042);F.inner.visible=open>.03;F.inner.position.y=(upY+loY)/2;F.inner.scale.set(w*.46,gap/2,.003);
+ const cy=(upY+loY)/2+.007*ex.smile-.006*ex.frown;F.cornerL.position.set(-w/2,cy,0);F.cornerR.position.set(w/2,cy,0);
+ F.jaw.position.y=-.055-.014*open;
+ for(const k of['L','R']){const br=F['brow'+k],s=br.userData.s;
+  br.position.y=.042+.008*ex.brow+.005*ex.browIn-.007*ex.angry;br.rotation.z=br.userData.rz+s*ex.angry*.4-s*ex.browIn*.3;
+  let b=k==='L'?ex.blinkL:ex.blinkR;b=Math.min(1,b+.22*ex.smile+.3*ex.angry);
+  const lid=F['lid'+k];lid.visible=b>.03;lid.scale.y=Math.max(.01,b);lid.position.y=.0315-.0095*b}
+
+ gazeT-=dt;if(gazeT<=0){gazeT=1+Math.random()*3;gazeOff.x=(Math.random()-.5)*.7;gazeOff.y=(Math.random()-.5)*.4}
+ let tx=gazeOff.x,ty=gazeOff.y,tgt=null;if(wheelOpen)tgt=wheel.position;else if(fairy.visible)tgt=fairy.position;
+ if(tgt){_gv.copy(tgt);_avP.head.worldToLocal(_gv);if(_gv.z<-.05){tx=clampN(_gv.x/-_gv.z,-1,1);ty=clampN(_gv.y/-_gv.z,-1,1)}}
+ const gk=Math.min(1,dt*14);gx+=(tx-gx)*gk;gy+=(ty-gy)*gk;
+ for(const k of['L','R']){const e=F['eye'+k];e.position.set(e.userData.b.x+gx*.0035,e.userData.b.y+gy*.0025,e.userData.b.z)}}
+
+function setFingers(grp,trig,sq,thumbOn,dt,present,pointing){
+ const c=grp.userData.c,fs=grp.userData.fs,k=Math.min(1,dt*18);
+ const tg=present?[pointing?0:trig*.9+sq*.1,.2+sq*.8,.2+sq*.8,.2+sq*.8,thumbOn?0:.9]:[.3,.3,.3,.3,.3];
+ if(present&&pointing){tg[0]=0;tg[1]=tg[2]=tg[3]=.9;tg[4]=.5}
+ const sg=grp.userData.sg;
+ fs.forEach((f,i)=>{c[i]+=(tg[i]-c[i])*k;const a=c[i];
+  if(f.th){f.p1.rotation.x=-a*.5;f.p1.rotation.y=f.baseY-sg*a*.55;f.p1.rotation.z=sg*a*.25;f.p2.rotation.x=-a*.95}
+  else{const e=1-a,fan=-(i-1.5)*.075*e*e,own=i===3?.12:0;
+   f.p1.rotation.x=-.12-a*1.25-own*a;f.p1.rotation.y=fan;f.p2.rotation.x=-.1-a*1.45;f.p3.rotation.x=-.05-a*.95}})}
+
 function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame=frame;
  const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;if(wheelClosing)spawnT-=dt;else spawnT+=dt;
  const L=sourceFor('left'),R=sourceFor('right');
@@ -1036,7 +1148,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    if(smR.distanceToSquared(rawR)>.36)smR.copy(rawR);else smR.lerp(rawR,hk);
    handLv=smL.clone();handRv=smR.clone();
    smQL.slerp(L.src?ctrlHand.left.getWorldQuaternion(new THREE.Quaternion()):restQ,qk);smQR.slerp(R.src?ctrlHand.right.getWorldQuaternion(new THREE.Quaternion()):restQ,qk)}
-  else{const pt=deskPoint(shR);smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(pt?_ptPos:restR,pt?.35:.2);handLv=smL.clone();handRv=smR.clone();
+  else{const pt=deskPoint(shR);deskPointing=!!pt;smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(pt?_ptPos:restR,pt?.35:.2);handLv=smL.clone();handRv=smR.clone();
    const k=Math.min(1,dt*10);smQL.slerp(wheelOpen?camQ:restQ,k);smQR.slerp(pt?_ptQ:restQ,pt?Math.min(1,dt*16):k)}
 
   const wrL=handLv.clone().add(new THREE.Vector3(0,0,.07).applyQuaternion(smQL)),wrR=handRv.clone().add(new THREE.Vector3(0,0,.07).applyQuaternion(smQR));
@@ -1063,6 +1175,10 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   const hOff=new THREE.Vector3(0,0,-.062);
   P.jHaL.position.copy(armL.ha).add(hOff.clone().applyQuaternion(smQL));P.jHaL.quaternion.copy(smQL);
   P.jHaR.position.copy(armR.ha).add(hOff.clone().applyQuaternion(smQR));P.jHaR.quaternion.copy(smQR);
+  P.fingL.position.copy(P.jHaL.position);P.fingL.quaternion.copy(smQL);P.fingR.position.copy(P.jHaR.position);P.fingR.quaternion.copy(smQR);
+  if(inXR){setFingers(P.fingL,L.triggerV,L.squeezeV,L.thumbOn,dt,!!L.src);setFingers(P.fingR,R.triggerV,R.squeezeV,R.thumbOn,dt,!!R.src)}
+  else{setFingers(P.fingL,0,.35,false,dt,false);setFingers(P.fingR,mouseDown?1:0,deskPointing?.9:.35,false,dt,true,deskPointing)}
+  {const br=Math.sin(t*1.7)*.5+.5;P.torso.scale.x=1.12*(1+.008*br);P.torso.scale.z=1+.012*br}
   setLimb(P.thighL,hipL,legL.el);setLimb(P.shinL,legL.el,legL.ha);setLimb(P.thighR,hipR,legR.el);setLimb(P.shinR,legR.el,legR.ha);
   P.jKnL.position.copy(legL.el);P.jKnR.position.copy(legR.el);
 
@@ -1196,6 +1312,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
  {const bNow=!!(L.bBtn||R.bBtn);if(bNow&&!prevB&&inXR&&wheelOpen&&!listening&&!kb){cancelWheel();haptic('left',.3,25);haptic('right',.3,25)}prevB=bNow}
  prevH.left.trigger=L.trigger;prevH.left.squeeze=L.squeeze;prevH.right.trigger=R.trigger;prevH.right.squeeze=R.squeeze;
  updateFairy(dt,t);
+ try{updateFace(dt,t)}catch(e){if(!updateFace.w){updateFace.w=1;console.warn('[face]',e)}}
 
  {const show=thinkingCount>0&&!['orb','orbthink','emerge','orbfade'].includes(fairyState.mode);dots.visible=show;
   if(show){const hd=worldPos(camera,tmpV);let h=0;for(let k=overheadAnims.length-1;k>=0;k--){const o=overheadAnims[k];if(!o.leaving){h=o.yOff+Math.ceil(o.n/PER_ROW)*ROW_H;break}}
