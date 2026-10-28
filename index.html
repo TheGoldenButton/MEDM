@@ -812,19 +812,24 @@ function closeWheelAndSend(){if(!wheelOpen)return;startClose();wheelLatched=fals
 
 function applyARMode(on){arMode=!!on;document.body.classList.toggle('ar-on',arMode);const b=$('arBtn');b.classList.toggle('ar-on',arMode);b.textContent=arMode?'📷 AR On — tap to exit':'📷 AR Mode';
  scene.background=arMode?null:new THREE.Color(0xe9e9e7);scene.fog=arMode?null:new THREE.Fog(0xe9e9e7,12,26);renderer.setClearColor(0x000000,arMode?0:1);
- for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){stopSnapCam();v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
+ for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){if(!(renderer.xr.isPresenting&&xrSessionMode==='immersive-ar'))stopSnapCam();v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
  setStatus(arMode?'📷 AR mode — real world via headset cameras. Hold the trigger (wheel closed) and ask Spark about what you see.':'VR mode — back in the virtual room.')}
 async function enterXR(kind){if(!navigator.xr){
    if(kind==='ar'){if(arMode){applyARMode(false);return true}try{arCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});const v=$('arCam');v.srcObject=arCamStream;v.style.display='block';applyARMode(true);return true}catch(e){setStatus('AR needs a headset (or camera permission): '+e.message)}return false}
    setStatus('WebXR not available in this browser — desktop preview still works.');return false}
- try{const mode=kind==='ar'?'immersive-ar':'immersive-vr';const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
-  let gotCam=false;if(kind==='ar')gotCam=await startSnapCam();
+ try{let mode=kind==='ar'?'immersive-ar':'immersive-vr';
+  /* Seamless VR<->AR: whenever passthrough is available, run ONE immersive-ar session and just hide/show the real world behind the virtual room. */
+  if(kind==='vr'){try{if(await navigator.xr.isSessionSupported('immersive-ar'))mode='immersive-ar'}catch(_){}}
+  const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
+  let gotCam=false;if(mode==='immersive-ar')gotCam=await startSnapCam();
   const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access']});
   renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0);
-  session.addEventListener('end',()=>{applyARMode(false);$('vrBtn').textContent='Enter VR'});
+  xrSessionMode=mode;session.addEventListener('end',()=>{xrSessionMode=null;applyARMode(false);stopSnapCam();$('vrBtn').textContent='Enter VR'});
   await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message+(kind==='ar'&&arSnapStream?' — camera was just allowed; tap 📷 AR Mode once more.':''));return false}}
-let xrSwitching=false;
-async function toggleAR(){if(xrSwitching)return;xrSwitching=true;
+let xrSwitching=false,xrSessionMode=null;
+async function toggleAR(){if(xrSwitching)return;
+ if(renderer.xr.isPresenting&&xrSessionMode==='immersive-ar'){const on=!arMode;if(on)startSnapCam();applyARMode(on);$('vrBtn').textContent=on?'Enter VR':'In VR — use controllers';return}
+ xrSwitching=true;
  try{
   if(renderer.xr.isPresenting){const wasAR=arMode,session=renderer.xr.getSession();
    if(session){const ended=new Promise(res=>{let done=false;const fin=()=>{if(done)return;done=true;res()};renderer.xr.addEventListener('sessionend',fin);setTimeout(fin,1500)});
@@ -834,7 +839,7 @@ async function toggleAR(){if(xrSwitching)return;xrSwitching=true;
     if(!ok)showErr('Could not switch to AR — immersive AR may be unsupported, or the browser blocked the new session. Tap 📷 AR Mode on the flat page to try again.')}
    return}
   await enterXR(arMode?'vr':'ar')}finally{xrSwitching=false}}
-$('vrBtn').onclick=()=>enterXR('vr');
+$('vrBtn').onclick=()=>{if(renderer.xr.isPresenting&&xrSessionMode==='immersive-ar'){if(arMode)toggleAR();return}enterXR('vr')};
 $('arBtn').onclick=()=>{if(renderer.xr.isPresenting)toggleAR();else enterXR(arMode?'vr':'ar')};
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
