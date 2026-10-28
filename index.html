@@ -475,7 +475,7 @@ for(let i=0;i<3;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(.1,.1),new T
   this.position.set(Math.cos(yaw)*ox,oy,-Math.sin(yaw)*ox);this.rotation.set(0,yaw,0);this.updateMatrix();this.matrixWorld.multiplyMatrices(g.matrixWorld,this.matrix)};
  dots.add(m)}
 
-const voicePanel=textPanel(.85,.32);voicePanel.visible=false;scene.add(voicePanel);
+const voicePanel=textPanel(.85,.32);voicePanel.visible=false;scene.add(voicePanel);voicePanel.material.visible=false;/* explanation box hidden; panel kept invisibly so wave-to-cancel still works */
 voicePanel.userData.draw('🎙️ Muse Voice Transcribe','Hold both triggers and speak…');
 
 const ui=new THREE.Group();ui.visible=false;camera.add(ui);
@@ -500,7 +500,7 @@ const cogBtns=[uiRectBtn('editKey','✏️ Enter API key',-.24,-.22,.42,.1),uiRe
 const uiTargets=[...uiBtns,...cogBtns];
 
 const toast=textPanel(.9,.3,900,300,2);toast.position.set(0,-.3,-.9);toast.visible=false;toast.renderOrder=1001;toast.material.depthTest=false;ui.add(toast);
-let toastUntil=0;function vrToast(title,body){if(!renderer.xr.isPresenting)return;toast.userData.draw(title,body);toast.visible=true;toastUntil=performance.now()+6000}
+let toastUntil=0;function vrToast(title,body){return;if(!renderer.xr.isPresenting)return;toast.userData.draw(title,body);toast.visible=true;toastUntil=performance.now()+6000}
 function drawCog(typing){const k=settings.key;
  const st=typing!=null?'typing… '+typing+' characters':(k?'set ✓ (•••• '+k.slice(-4)+', '+k.length+' chars)':'NOT SET ✗ — voice is off');
  cogPanel.userData.draw('⚙️ Settings','Meta API key: '+st+'. Speech goes to Muse Voice Transcribe, the text to Muse Spark ('+settings.model+'). Tap ✏️ to type the key with the Meta keyboard — type the whole key, it replaces the old one. Point at ⚙️ or an empty part of this panel and pull the trigger to close.'+(CONFIG.META_API_KEY?' (A key in MANUAL CONFIG overrides this on reload.)':''))}
