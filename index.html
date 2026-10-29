@@ -150,7 +150,11 @@ $('clearSet').onclick=()=>{$('kMeta').value='';};
 $('saveSet').onclick=()=>{settings.key=$('kMeta').value.trim();settings.transUrl=$('kTransUrl').value.trim()||DEF_T;settings.sparkUrl=$('kSparkUrl').value.trim()||DEF_S;settings.model=$('kSparkModel').value.trim()||'muse-spark-1.3';localStorage.setItem('museMetaApiKey',settings.key);localStorage.setItem('museTransUrl',settings.transUrl);localStorage.setItem('museSparkUrl',settings.sparkUrl);localStorage.setItem('museSparkModel',settings.model);try{localStorage.setItem('lipSync',$('kLip').checked?'1':'0')}catch(_){}lip.tried=false;if($('kLip').checked)startLipSync();else stopLipSync();$('modal').classList.remove('open');setStatus(settings.key?'Meta API key saved. Voice will use Muse Voice Transcribe + Muse Spark.':'Settings saved (no key — voice will use Meta keyboard dictation).');};
 
 const canvas=$('c');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+const renderer=(()=>{/* try the best context first, then progressively simpler ones */
+ const tries=[{antialias:true,alpha:true},{antialias:false,alpha:true},{antialias:false,alpha:true,powerPreference:'low-power'},{antialias:false,alpha:true,failIfMajorPerformanceCaveat:false,powerPreference:'default'}];
+ let err;for(const o of tries){try{return new THREE.WebGLRenderer({canvas,...o})}catch(e){err=e}}
+ try{const st=document.getElementById('status');if(st)st.textContent='WebGL could not start ('+(err&&err.message||'unknown')+'). Close other tabs/windows using the GPU, make sure hardware acceleration is on, then reload.'}catch(_){}
+ throw err})();
 const arHide=[];
 let arMode=false,lastXRFrame=null,arCamStream=null;
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
@@ -1012,6 +1016,8 @@ const _poleV=new THREE.Vector3();function armPole(side,bodyQ){return _poleV.set(
 
 const ARM1=.31,ARM2=.31,LEG1=.46,LEG2=.46;
 const AV_EYE=1.68;
+/* the hand model is palm-down in the controller's frame; a held controller has the thumb up and palm inward, so roll the hand 90 degrees about its pointing axis */
+const _ctrlCorrL=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI/2),_ctrlCorrR=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),-Math.PI/2);
 const smQL=new THREE.Quaternion(),smQR=new THREE.Quaternion(),_handDown=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-1.35);
 
 const TURN_SNAP=true,SNAP_DEG=30,SMOOTH_DEG=110;let turnLatch=false;
@@ -1249,7 +1255,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    if(smL.distanceToSquared(rawL)>.36)smL.copy(rawL);else smL.lerp(rawL,hk);
    if(smR.distanceToSquared(rawR)>.36)smR.copy(rawR);else smR.lerp(rawR,hk);
    handLv=smL.clone();handRv=smR.clone();
-   smQL.slerp(L.src?ctrlHand.left.getWorldQuaternion(new THREE.Quaternion()):restQ,qk);smQR.slerp(R.src?ctrlHand.right.getWorldQuaternion(new THREE.Quaternion()):restQ,qk)}
+   smQL.slerp(L.src?ctrlHand.left.getWorldQuaternion(new THREE.Quaternion()).multiply(_ctrlCorrL):restQ,qk);smQR.slerp(R.src?ctrlHand.right.getWorldQuaternion(new THREE.Quaternion()).multiply(_ctrlCorrR):restQ,qk)}
   else{const pt=deskPoint(shR);deskPointing=!!pt;smL.lerp(wheelOpen?desktopHand().sub(avatar.position):restL,.2);smR.lerp(pt?_ptPos:restR,pt?.35:.2);handLv=smL.clone();handRv=smR.clone();
    const k=Math.min(1,dt*10);smQL.slerp(wheelOpen?camQ:restQ,k);smQR.slerp(pt?_ptQ:restQ,pt?Math.min(1,dt*16):k)}
 
