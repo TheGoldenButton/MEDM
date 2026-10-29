@@ -178,9 +178,11 @@ const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.05,60);
 const rig=new THREE.Group();rig.position.set(0,0,-1.9);scene.add(rig);rig.add(camera);camera.position.set(0,1.6,0);
 scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,.75));
 
-for(const x of[-2.5,2.5]){const sp=new THREE.SpotLight(0xffffff,1.1,0,Math.PI/2.6,.7,0);sp.position.set(x,3.9,0);sp.target.position.set(x*.6,0,0);scene.add(sp,sp.target);
+const spots=[];for(const x of[-2.5,2.5]){const sp=new THREE.SpotLight(0xffffff,1.1,0,Math.PI/2.6,.7,0);sp.position.set(x,3.9,0);sp.target.position.set(x*.6,0,0);scene.add(sp,sp.target);spots.push(sp);sp.userData.x=x;
  sp.castShadow=true;sp.shadow.mapSize.set(2048,2048);sp.shadow.camera.near=.5;sp.shadow.camera.far=8;sp.shadow.bias=-.0004;sp.shadow.normalBias=.02;sp.shadow.radius=4}
 const pmrem=new THREE.PMREMGenerator(renderer);
+/* AR: invisible floor that only receives shadows, so the avatars sit on the real floor */
+const arShadow=new THREE.Mesh(new THREE.PlaneGeometry(14,14),new THREE.ShadowMaterial({opacity:.3}));arShadow.rotation.x=-Math.PI/2;arShadow.position.y=.002;arShadow.receiveShadow=true;arShadow.visible=false;scene.add(arShadow);
 
 {
  const mat=new THREE.MeshStandardMaterial({color:0xf4f4f2,roughness:.95});
@@ -710,10 +712,54 @@ async function finishAsk(said,shot){
  vrToast('🧚 Spark',res.seq.join(' '));
  if(res.seq.length)fairyShowAnswer(res.seq);else fairyDismiss()}
 
-const ORB_DIST=2.3,FAIRY_DIST=2.5,FS=2.55,ORB_K=ORB_DIST/1.5,EMERGE_MS=1400;let ORB_SIDE=.1,FAIRY_SIDE=.22,sparkSideT=0;
+const ORB_DIST=1.9,FAIRY_DIST=2.0,FS=1.75,ORB_K=ORB_DIST/1.5,EMERGE_MS=1400;let ORB_SIDE=.1,FAIRY_SIDE=.22,sparkSideT=0;
 const SPARK_CANDIDATES=[0,.18,-.18,.36,-.36,.54,-.54];
 const UPV=new THREE.Vector3(0,1,0),_fw=new THREE.Vector3(),_rt=new THREE.Vector3(),_ey=new THREE.Vector3(),_tp=new THREE.Vector3(),_tp2=new THREE.Vector3(),_lastFw=new THREE.Vector3(0,0,-1);
 
+/* ---------- real-room awareness (AR): planes from the headset's room scan become walls Spark and the avatar respect ---------- */
+const roomGroup=new THREE.Group();rig.add(roomGroup);
+const roomPlanes=new Map(),roomWallRecs=[];let roomCeilY=null,roomHasWalls=false,roomScanT=0,roomNoteDone=false,roomArT0=0,childPlacedAR=false,childPlacedWalls=false;
+const PLANE_GEO=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2);
+const _rmP=new THREE.Vector3(),_rmN=new THREE.Vector3(),_hd=new THREE.Vector3(),_hd2=new THREE.Vector3(),_ag1=new THREE.Vector3(),_ag2=new THREE.Vector3();
+function clearRealRoom(){for(const r of roomPlanes.values()){roomGroup.remove(r.mesh);r.mesh.material.dispose()}roomPlanes.clear();roomWallRecs.length=0;roomHasWalls=false;roomCeilY=null}
+function onARChanged(){roomArT0=0;roomNoteDone=false;childPlacedAR=false;childPlacedWalls=false;fairyAnchorSet=false;
+ if(!arMode){clearRealRoom();sparkChild.position.x=1.35;sparkChild.position.z=-3.35}}
+function updateRealRoom(frame){
+ if(!frame)return;const now=performance.now();if(!roomArT0)roomArT0=now;
+ const set=frame.detectedPlanes;
+ if(!set){if(!roomNoteDone&&now-roomArT0>4000&&renderer.xr.isPresenting){roomNoteDone=true;setStatus('📐 Room boundaries unavailable — this headset/browser gave no plane data (run Space Setup, allow spatial data, re-enter AR). Spark and the avatar still stay in front of you, just without wall checks.')}return}
+ if(now-roomScanT<250)return;roomScanT=now;
+ const ref=renderer.xr.getReferenceSpace();if(!ref)return;let changed=false;
+ for(const[pl,rec]of roomPlanes)if(!set.has(pl)){roomGroup.remove(rec.mesh);rec.mesh.material.dispose();roomPlanes.delete(pl);changed=true}
+ set.forEach(pl=>{let rec=roomPlanes.get(pl);if(rec&&rec.t===pl.lastChangedTime)return;
+  const pose=frame.getPose(pl.planeSpace,ref);if(!pose)return;
+  if(!rec){const mesh=new THREE.Mesh(PLANE_GEO,new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide}));roomGroup.add(mesh);rec={mesh,label:'',t:0,flip:null,big:false};roomPlanes.set(pl,rec)}
+  rec.t=pl.lastChangedTime;rec.flip=null;rec.label=pl.semanticLabel||(pl.orientation==='vertical'?'wall':'');
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of pl.polygon){x0=Math.min(x0,q.x);x1=Math.max(x1,q.x);z0=Math.min(z0,q.z);z1=Math.max(z1,q.z)}
+  if(x1<x0)return;const o=pose.transform.orientation,pp=pose.transform.position;
+  rec.mesh.quaternion.set(o.x,o.y,o.z,o.w);_rmP.set((x0+x1)/2,0,(z0+z1)/2).applyQuaternion(rec.mesh.quaternion);
+  rec.mesh.position.set(pp.x+_rmP.x,pp.y+_rmP.y,pp.z+_rmP.z);rec.mesh.scale.set(Math.max(.05,x1-x0),1,Math.max(.05,z1-z0));
+  rec.big=(x1-x0)>=.8&&(z1-z0)>=.8;changed=true});
+ if(!changed)return;
+ roomGroup.updateWorldMatrix(true,true);worldPos(camera,_hd);roomWallRecs.length=0;roomCeilY=null;
+ for(const r of roomPlanes.values()){
+  if(r.label==='wall'&&r.big){if(r.flip==null){r.mesh.getWorldPosition(_rmP);_rmN.set(0,1,0).transformDirection(r.mesh.matrixWorld);r.flip=((_hd.x-_rmP.x)*_rmN.x+(_hd.z-_rmP.z)*_rmN.z)<0}roomWallRecs.push(r)}
+  else if(r.label==='ceiling'){r.mesh.getWorldPosition(_rmP);roomCeilY=roomCeilY==null?_rmP.y:Math.min(roomCeilY,_rmP.y)}}
+ const had=roomHasWalls;roomHasWalls=roomWallRecs.length>0;
+ if(roomHasWalls&&!had)setStatus('📐 Room scan found '+roomWallRecs.length+' wall'+(roomWallRecs.length===1?'':'s')+' — Spark and the avatar will stay inside your real room.')}
+/* push a world point (x/z) inside the detected walls; returns true if it moved */
+function constrainToRoom(p,margin){if(!arMode||!roomWallRecs.length)return false;let moved=false;
+ for(let it=0;it<3;it++){let any=false;
+  for(const r of roomWallRecs){const m=r.mesh;m.getWorldPosition(_rmP);_rmN.set(0,1,0).transformDirection(m.matrixWorld);_rmN.y=0;const l=_rmN.length();if(l<.3)continue;_rmN.divideScalar(l);if(r.flip)_rmN.negate();
+   const d=(p.x-_rmP.x)*_rmN.x+(p.z-_rmP.z)*_rmN.z;if(d<margin){p.x+=_rmN.x*(margin-d);p.z+=_rmN.z*(margin-d);any=moved=true}}
+  if(!any)break}
+ return moved}
+function placeChildForAR(){worldPos(camera,_hd);camera.getWorldDirection(_fw);_fw.y=0;if(_fw.lengthSq()<.04)_fw.copy(_lastFw);else _fw.normalize();
+ _rt.crossVectors(_fw,UPV).normalize();const p=_hd.clone().addScaledVector(_fw,2).addScaledVector(_rt,.5);p.y=0;constrainToRoom(p,.5);
+ sparkChild.position.x=p.x;sparkChild.position.z=p.z;childPlacedAR=true;childPlacedWalls=roomHasWalls}
+function arSpatialUpdate(dt){worldPos(camera,_hd);arShadow.position.set(_hd.x,.002,_hd.z);
+ for(const sp of spots){sp.position.set(_hd.x+sp.userData.x,3.9,_hd.z);sp.target.position.set(_hd.x+sp.userData.x*.6,0,_hd.z);sp.target.updateMatrixWorld()}
+ if(!childPlacedAR||(roomHasWalls&&!childPlacedWalls))placeChildForAR();else constrainToRoom(sparkChild.position,.45)}
 function frontPos(dist,side,drop,out){camera.getWorldDirection(_fw);_fw.y=0;/* flat heading only: looking up/down must never shrink the distance */
  if(_fw.lengthSq()<.04)_fw.copy(_lastFw);else{_fw.normalize();_lastFw.copy(_fw)}worldPos(camera,_ey);
  const bx=_fw.x,bz=_fw.z;let ang=0;
@@ -722,10 +768,10 @@ function frontPos(dist,side,drop,out){camera.getWorldDirection(_fw);_fw.y=0;/* f
   for(const a of[0,.6,-.6,1.2,-1.2,1.9,-1.9,Math.PI]){if(inside(a)){ang=a;break}}}
  if(ang){const c=Math.cos(ang),sn=Math.sin(ang),x=_fw.x*c-_fw.z*sn,z=_fw.x*sn+_fw.z*c;_fw.x=x;_fw.z=z}
  _rt.crossVectors(_fw,UPV).normalize();
- out.copy(_ey).addScaledVector(_fw,dist).addScaledVector(_rt,side);out.y+=drop;if(!arMode){out.x=Math.max(-4.5,Math.min(4.5,out.x));out.z=Math.max(-4.5,Math.min(4.5,out.z))}return out}
+ out.copy(_ey).addScaledVector(_fw,dist).addScaledVector(_rt,side);out.y+=drop;if(!arMode){out.x=Math.max(-4.5,Math.min(4.5,out.x));out.z=Math.max(-4.5,Math.min(4.5,out.z))}else{constrainToRoom(out,.35);if(roomCeilY!=null)out.y=Math.min(out.y,roomCeilY-.25)}out.y=Math.max(out.y,.35);return out}
 
 const _spRay=new THREE.Raycaster(),_spD=new THREE.Vector3(),_spP=new THREE.Vector3(),_spH=new THREE.Vector3();
-function sparkObstacles(){const a=[];for(const o of arHide)if(o.visible)a.push(o);
+function sparkObstacles(){const a=[];for(const o of arHide)if(o.visible)a.push(o);if(arMode)for(const r of roomPlanes.values())a.push(r.mesh);
  for(const o of[wheel,voicePanel,toast,helpPanel])if(o&&o.visible)a.push(o);return a}
 function sparkPlaceScore(side){const obs=sparkObstacles();let score=3;
  for(const[dist,off,drop]of[[ORB_DIST,side*.45,-.05],[FAIRY_DIST,side,-.1]]){
@@ -772,16 +818,33 @@ const fairySparks=(()=>{const n=36,pos=new Float32Array(n*3);for(let i=0;i<n;i++
 const fairyAnswer=new THREE.Group();fairyAnswer.visible=false;scene.add(fairyAnswer);
 let fairyAnswerItems=[];
 
-function fairyTargetPos(out){return frontPos(FAIRY_DIST,FAIRY_SIDE,-.1,out)}
+const orbBase=new THREE.Vector3(),fairyAnchor=new THREE.Vector3();let fairyAnchorSet=false;
+/* Spark lives in the room, not on your face: it keeps a world position, drifts out of your personal space, comes closer if you walk away, and never leaves the room */
+function sparkKeepInWorld(p,dt){worldPos(camera,_ey);let dx=p.x-_ey.x,dz=p.z-_ey.z,d=Math.hypot(dx,dz);
+ if(d<1e-3){camera.getWorldDirection(_fw);dx=_fw.x;dz=_fw.z;d=Math.hypot(dx,dz)||1}
+ const ux=dx/d,uz=dz/d;
+ if(d<1.3){const k=Math.min(1,dt*3.5)*(1.3-d);p.x+=ux*k;p.z+=uz*k}
+ else if(d>4){const k=Math.min(1,dt*2)*(d-4);p.x-=ux*k;p.z-=uz*k}
+ if(arMode)constrainToRoom(p,.3);else{p.x=Math.max(-4.2,Math.min(4.2,p.x));p.z=Math.max(-4.2,Math.min(4.2,p.z))}
+ p.y=Math.max(.5,Math.min(p.y,arMode&&roomCeilY!=null?roomCeilY-.3:3.4))}
+/* gentle companion drift: while Spark is working or answering, its spot slowly re-centres in front of you (lagging, with a dead zone) */
+const _sf=new THREE.Vector3();
+function sparkFollow(p,dist,drop,dt){frontPos(dist,FAIRY_SIDE,drop,_sf);const dx=_sf.x-p.x,dz=_sf.z-p.z,off=Math.hypot(dx,dz);
+ if(off>.4){const k=Math.min(1,dt*.55)*(1-.4/off);p.x+=dx*k;p.z+=dz*k}
+ p.y+=(_sf.y-p.y)*Math.min(1,dt*.7)}
+function ensureFairyAnchor(force){worldPos(camera,_ey);camera.getWorldDirection(_ag1);_ag1.y=0;let ok=fairyAnchorSet&&!force;
+ if(ok){_ag2.copy(fairyAnchor).sub(_ey);_ag2.y=0;const l=_ag2.length(),gl=_ag1.length();ok=l>.1&&gl>.1&&_ag1.dot(_ag2)/(l*gl)>.5&&l<4.5}
+ if(!ok){pickSparkPlace(true);sparkSideT=performance.now();frontPos(FAIRY_DIST,FAIRY_SIDE,-.1,fairyAnchor);fairyAnchorSet=true}}
+function fairyTargetPos(out,dt){if(!fairyAnchorSet)ensureFairyAnchor(true);sparkFollow(fairyAnchor,FAIRY_DIST,-.1,dt||.016);sparkKeepInWorld(fairyAnchor,dt||.016);return out.copy(fairyAnchor)}
 
 function summonOrb(){const m=fairyState.mode;if(m==='orb'||m==='orbthink')return;
  fairy.visible=false;fairyAnswer.visible=false;fairyState.hasAnswer=false;pickSparkPlace(true);sparkSideT=performance.now();
- frontPos(ORB_DIST,ORB_SIDE,-.05,orb.position);orb.scale.setScalar(.001);orb.visible=true;
+ frontPos(ORB_DIST,ORB_SIDE,-.05,orb.position);orbBase.copy(orb.position);fairyAnchorSet=false;orb.scale.setScalar(.001);orb.visible=true;
  fairyState.mode='orb';fairyState.t0=performance.now()}
 
 function fairyThink(){if(fairyState.mode==='hidden')summonOrb();if(fairyState.mode==='orb')fairyState.mode='orbthink'}
 
-function beginEmerge(){sfxChime();fairyState.from.copy(orb.position);fairyState.s0=Math.max(.2,orb.scale.x);fairyState.mode='emerge';fairyState.t0=performance.now();
+function beginEmerge(){sfxChime();{worldPos(camera,_ey);camera.getWorldDirection(_ag1);_ag1.y=0;_ag2.copy(orbBase).sub(_ey);_ag2.y=0;const l=_ag2.length(),gl=_ag1.length();if(l>.1&&gl>.1&&_ag1.dot(_ag2)/(l*gl)>.55&&l<4.5){fairyAnchor.copy(orbBase);fairyAnchorSet=true}else fairyAnchorSet=false}ensureFairyAnchor(false);fairyState.from.copy(orb.position);fairyState.s0=Math.max(.2,orb.scale.x);fairyState.mode='emerge';fairyState.t0=performance.now();
  fairy.position.copy(orb.position);fairy.scale.setScalar(.05);fairy.visible=true;fairyAnswer.visible=false}
 function enterAnswer(){fairyState.mode='answer';fairyState.answerUntil=performance.now()+8000;fairyAnswer.visible=true}
 function fairyDismiss(){const m=fairyState.mode;if(m==='hidden'||m==='return'||m==='orbfade')return;
@@ -797,7 +860,7 @@ function fairyShowAnswer(seq){
  fairyState.hasAnswer=true;pickSparkPlace(true);sparkSideT=performance.now();
  if(['hidden','return','orbfade'].includes(fairyState.mode)){fairyState.mode='hidden';summonOrb()}
  if(fairyState.mode==='orb'||fairyState.mode==='orbthink')beginEmerge();
- else if(fairyState.mode!=='emerge')enterAnswer()}
+ else if(fairyState.mode!=='emerge'){ensureFairyAnchor(false);enterAnswer()}}
 
 const sstep=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x)};
 const sparkDotTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d'),gr=g.createRadialGradient(64,64,0,64,64,60);
@@ -822,12 +885,12 @@ function updateFairy(dt,t){updateFairyCore(dt,t);updateSparkDots()}
 function updateFairyCore(dt,t){const m=fairyState.mode,now=performance.now();
  if(m==='hidden'){fairy.visible=false;fairyAnswer.visible=false;orb.visible=false;sparkLight.visible=false;return}
  sparkLight.visible=true;
- if(now-sparkSideT>750){sparkSideT=now;pickSparkPlace()}
+
 
  if(m==='orb'||m==='orbthink'||m==='orbfade'||m==='emerge'){
   const think=m==='orbthink';let sc=1,flash=0,gather=0,spin=think?6:2;
   if(m==='orb'||m==='orbthink'){
-   frontPos(ORB_DIST,ORB_SIDE,-.05,_tp);orb.position.lerp(_tp,Math.min(1,dt*3));
+   sparkFollow(orbBase,ORB_DIST,-.05,dt);sparkKeepInWorld(orbBase,dt);_tp.copy(orbBase);_tp.y+=Math.sin(t*1.7)*.025;orb.position.lerp(_tp,Math.min(1,dt*6));
    const age=Math.min(1,(now-fairyState.t0)/900);gather=(1-age)*2.5;sc=ORB_K*easeOutBack(age)*(1+(think?.12:.06)*Math.sin(t*(think?14:6)))}
   else if(m==='orbfade'){const f=Math.min(1,(now-fairyState.t0)/450);sc=fairyState.s0*(1-f*f);spin=4;
    if(f>=1){fairyState.mode='hidden';orb.visible=false;sparkLight.visible=false;fairy.visible=false;return}}
@@ -841,12 +904,12 @@ function updateFairyCore(dt,t){const m=fairyState.mode,now=performance.now();
   if(m!=='emerge'){fairy.visible=false;fairyAnswer.visible=false;return}}
  else orb.visible=false;
 
- fairy.visible=true;let fade=1,fsc=FS,haloIn=1;const tgt=fairyTargetPos(_tp2);
+ fairy.visible=true;let fade=1,fsc=FS,haloIn=1;const tgt=fairyTargetPos(_tp2,dt);
  if(m==='emerge'){const f=Math.min(1,(now-fairyState.t0)/EMERGE_MS),g=Math.min(1,Math.max(0,(f-.18)/.82)),e=1-Math.pow(1-g,3);
   fairy.position.lerpVectors(fairyState.from,tgt,e);fairy.position.y+=Math.sin(g*Math.PI)*.1;
   fsc=FS*(.1+.9*e);fade=Math.min(1,Math.max(0,(f-.12)/.35));haloIn=sstep(.55,1,f);
   if(f>=1){if(fairyState.hasAnswer)enterAnswer();else fairyState.mode='hover'}}
- else if(m==='return'){const f=Math.min(1,(now-fairyState.t0)/700),e=f*f;frontPos(ORB_DIST,ORB_SIDE,-.05,_tp);
+ else if(m==='return'){const f=Math.min(1,(now-fairyState.t0)/700),e=f*f;_tp.copy(orbBase);
   fairy.position.lerpVectors(fairyState.from,_tp,e);fsc=Math.max(.04,FS*(1-e));fade=1-e;
   if(f>=1){fairyState.mode='hidden';fairy.visible=false;fairyAnswer.visible=false;sparkLight.visible=false;return}}
  else{
@@ -1055,7 +1118,7 @@ function cancelWheel(){if(wheelOpen)startClose();wheelLatched=false;wheelOpen=fa
 function closeWheelAndSend(){if(!wheelOpen)return;startClose();wheelLatched=false;wheelOpen=false;wheelHand=null;
  if(sequence.length){const s=[...sequence];sequence=[];renderSeqStrip();popSequence(s);setStatus('Sent above your head: '+s.join(' '));try{maybeSparkChildRespond(s)}catch(_){}}}
 
-function applyARMode(on){arMode=!!on;document.body.classList.toggle('ar-on',arMode);const b=$('arBtn');b.classList.toggle('ar-on',arMode);b.textContent=arMode?'📷 AR On — tap to exit':'📷 AR Mode';
+function applyARMode(on){arMode=!!on;arShadow.visible=arMode;onARChanged();document.body.classList.toggle('ar-on',arMode);const b=$('arBtn');b.classList.toggle('ar-on',arMode);b.textContent=arMode?'📷 AR On — tap to exit':'📷 AR Mode';
  scene.background=arMode?null:new THREE.Color(0xe9e9e7);scene.fog=arMode?null:new THREE.Fog(0xe9e9e7,12,26);renderer.setClearColor(0x000000,arMode?0:1);
  for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){if(!(renderer.xr.isPresenting&&xrSessionMode==='immersive-ar'))stopSnapCam();v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
  setStatus(arMode?'📷 AR mode — real world via headset cameras. Hold the trigger (wheel closed) and ask Spark about what you see.':'VR mode — back in the virtual room.')}
@@ -1067,7 +1130,7 @@ async function enterXR(kind){startLipSync();if(!navigator.xr){
   if(kind==='vr'){try{if(await navigator.xr.isSessionSupported('immersive-ar'))mode='immersive-ar'}catch(_){}}
   const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
   let gotCam=false;if(mode==='immersive-ar')gotCam=await startSnapCam();
-  const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access','face-tracking','eye-tracking']});
+  const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access','face-tracking','eye-tracking','plane-detection']});
   renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0);
   xrSessionMode=mode;session.addEventListener('end',()=>{xrSessionMode=null;applyARMode(false);stopSnapCam();$('vrBtn').textContent='Enter VR'});
   await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message+(kind==='ar'&&arSnapStream?' — camera was just allowed; tap 📷 AR Mode once more.':''));return false}}
@@ -1588,13 +1651,14 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
  const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;if(wheelClosing)spawnT-=dt;else spawnT+=dt;
  const L=sourceFor('left'),R=sourceFor('right');
  const inXR=renderer.xr.isPresenting;
+ if(arMode){try{updateRealRoom(frame);arSpatialUpdate(dt)}catch(e){if(!animate.w){animate.w=1;console.warn('[ar room]',e)}}}
 
  if(!inXR){camera.position.set(0,1.6,0);camera.rotation.set(pitch,yaw,0,'YXZ')}
 
  {const sx=inXR?L.stick[0]:(keys.KeyD?1:0)-(keys.KeyA?1:0);const sz=inXR?L.stick[1]:(keys.KeyS?1:0)-(keys.KeyW?1:0);
   if(Math.abs(sx)>.12||Math.abs(sz)>.12){const fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();const right=new THREE.Vector3().crossVectors(fwd,new THREE.Vector3(0,1,0));
    rig.position.addScaledVector(fwd,-sz*2.2*dt).addScaledVector(right,sx*2.2*dt);
-   rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}
+   if(arMode){if(roomWallRecs.length){worldPos(camera,_hd);_hd2.copy(_hd);constrainToRoom(_hd2,.25);rig.position.x+=_hd2.x-_hd.x;rig.position.z+=_hd2.z-_hd.z}}else{rig.position.x=THREE.MathUtils.clamp(rig.position.x,-4.4,4.4);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4.4,4.4)}}}
 
  if(inXR&&!wheelOpen){const tx=R.stick[0];
   if(TURN_SNAP){if(Math.abs(tx)>.65){if(!turnLatch){turnLatch=true;turnRig(-Math.sign(tx)*SNAP_DEG*Math.PI/180)}}else if(Math.abs(tx)<.35)turnLatch=false}
