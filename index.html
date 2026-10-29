@@ -1322,11 +1322,12 @@ function buildChildWheel(tabIdx){
 function renderChildSeqStrip(list){while(childSeqStrip.children.length)childSeqStrip.remove(childSeqStrip.children[0]);
  list.forEach((e,i)=>{const m=emojiPlane(e,.05);m.position.set((i-(list.length-1)/2)*.058,0,0);childSeqStrip.add(m)})}
 function childTabFor(e){const k=nk(e);let i=TABS.findIndex(t=>t.emojis.some(x=>nk(x)===k));return i<0?0:i}
+const NEAR_CHILD=12;/* metres: anywhere in the room */
 function playerFacingChild(){
  const cp=worldPos(camera,new THREE.Vector3()),d=Math.hypot(cp.x-sparkChild.position.x,cp.z-sparkChild.position.z);
- camera.getWorldDirection(_fw);_fw.y=0;if(_fw.lengthSq()<.01)return{near:d<2.3,facing:false,dist:d};
+ camera.getWorldDirection(_fw);_fw.y=0;if(_fw.lengthSq()<.01)return{near:d<NEAR_CHILD,facing:false,dist:d};
  _fw.normalize();const tx=sparkChild.position.x-cp.x,tz=sparkChild.position.z-cp.z,tl=Math.hypot(tx,tz)||1;
- return{near:d<2.3,facing:(_fw.x*tx+_fw.z*tz)/tl>.62,dist:d}}
+ return{near:d<NEAR_CHILD,facing:(_fw.x*tx+_fw.z*tz)/tl>.55,dist:d}}
 function captureChildShot(){try{
  childHeadAnchor.getWorldPosition(shotCam.position);shotCam.position.y+=.03;
  const cp=worldPos(camera,new THREE.Vector3());shotCam.lookAt(cp.x,cp.y-.05,cp.z);shotCam.updateMatrixWorld(true);
@@ -1394,7 +1395,7 @@ async function maybeSparkChildRespond(seq){
  if(!seq||!seq.length||childBusy||performance.now()<childCooldownUntil)return;
  const f=playerFacingChild();
  if(!f.near){return}
- if(!f.facing){setStatus('💙 Spark\'s child avatar is right there — face it and send your emoji again so it can see them.');return}
+ if(!f.facing){setStatus('💙 Spark\'s child avatar is in the room — face it and send your emoji again so it can see them.');return}
  childBusy=true;childState.mode='thinking';childState.t0=performance.now();childThinkDots.visible=true;
  setStatus('💙 Spark (child) saw: '+seq.join(' ')+' — thinking…');
  let res;try{const shot=captureChildShot();res=await sparkChildAsk(seq,shot)}catch(e){res={seq:localChildRespond(seq),via:'local',why:e.message}}
@@ -1414,7 +1415,7 @@ function updateSparkChild(dt,t){
  const cp=worldPos(camera,new THREE.Vector3());
  /* face the visitor when they are close, otherwise face the room entrance */
  {const want=Math.atan2(-(cp.x-sparkChild.position.x),-(cp.z-sparkChild.position.z));
-  const near=cp.distanceTo(sparkChild.position)<4;
+  const near=cp.distanceTo(sparkChild.position)<NEAR_CHILD;
   const target=near?want:Math.PI;
   let df=target-sparkChild.rotation.y;df=Math.atan2(Math.sin(df),Math.cos(df));
   sparkChild.rotation.y+=df*Math.min(1,dt*(near?5:1.5))}
