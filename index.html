@@ -46,7 +46,7 @@ body.ar-on #c{background:transparent}
 <button id="vrBtn">Enter VR</button>
 <div id="err"></div>
 <div id="modal"><div class="card"><h2 style="margin:0">Settings — Meta / Muse APIs</h2>
-<p class="note">One Meta API key is used for both Muse Voice Transcribe and Muse Spark. It is stored only in this browser (<code>localStorage</code>), never in this file. With a key: speech goes to Muse Voice Transcribe, the text goes to Muse Spark. Without a key, voice falls back to the Meta headset keyboard's built-in dictation (tap the mic on the keyboard, speak, press Done) and Spark falls back to a local translator that turns your words into the best-matching emoji in word order, with redundant symbols pruned.</p>
+<p class="note">One Meta API key is used for both Muse Voice Transcribe and Muse Spark. It is stored only in this browser (<code>localStorage</code>), never in this file. With a key: speech goes to Muse Voice Transcribe, the text goes to Muse Spark. Without a key, voice falls back to the headset's built-in speech recognition (the same engine as the keyboard's mic button, started automatically with no keyboard popping up) and Spark falls back to a local translator that turns your words into the best-matching emoji in word order, with redundant symbols pruned.</p>
 <label>Meta API key (Muse Voice Transcribe + Muse Spark)</label><input id="kMeta" type="password" autocomplete="off" placeholder="Paste Meta API key">
 <label>Muse Voice Transcribe endpoint</label><input id="kTransUrl" type="text">
 <label>Muse Spark endpoint</label><input id="kSparkUrl" type="text">
@@ -157,7 +157,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth
 renderer.shadowMap.enabled=true;renderer.xr.enabled=true;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xe9e9e7);scene.fog=new THREE.Fog(0xe9e9e7,12,26);
 const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.05,60);
-const rig=new THREE.Group();rig.position.set(0,0,-2.6);scene.add(rig);rig.add(camera);camera.position.set(0,1.6,0);
+const rig=new THREE.Group();rig.position.set(0,0,-1.9);scene.add(rig);rig.add(camera);camera.position.set(0,1.6,0);
 scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,.75));
 
 for(const x of[-2.5,2.5]){const sp=new THREE.SpotLight(0xffffff,1.1,0,Math.PI/2.6,.7,0);sp.position.set(x,3.9,0);sp.target.position.set(x*.6,0,0);scene.add(sp,sp.target);
@@ -566,8 +566,8 @@ const uiTargets=[...uiBtns,...cogBtns,...helpHits];
 const toast=textPanel(.9,.3,900,300,2);toast.position.set(0,-.3,-.9);toast.visible=false;toast.renderOrder=1001;toast.material.depthTest=false;ui.add(toast);
 let toastUntil=0;function vrToast(title,body){return;if(!renderer.xr.isPresenting)return;toast.userData.draw(title,body);toast.visible=true;toastUntil=performance.now()+6000}
 function drawCog(typing){const k=settings.key;
- const st=typing!=null?'typing… '+typing+' characters':(k?'set ✓ (•••• '+k.slice(-4)+', '+k.length+' chars)':'NOT SET — Meta keyboard dictation + local emoji fallback will be used');
- cogPanel.userData.draw('⚙️ Settings','Meta API key: '+st+'. With a key, speech goes to Muse Voice Transcribe and text to Muse Spark ('+settings.model+'); without one, the Meta keyboard opens so you can dictate with its mic button (or type), and your words are shown as best-matching emoji in order. Tap ✏️ to type the key with the Meta keyboard — type the whole key, it replaces the old one. Point at ⚙️ or an empty part of this panel and pull the trigger to close.'+(CONFIG.META_API_KEY?' (A key in MANUAL CONFIG overrides this on reload.)':''))}
+ const st=typing!=null?'typing… '+typing+' characters':(k?'set ✓ (•••• '+k.slice(-4)+', '+k.length+' chars)':'NOT SET — headset speech recognition + local emoji fallback will be used');
+ cogPanel.userData.draw('⚙️ Settings','Meta API key: '+st+'. With a key, speech goes to Muse Voice Transcribe and text to Muse Spark ('+settings.model+'); without one, the headset\'s built-in speech recognition listens automatically (no keyboard pops up), and your words are shown as best-matching emoji in order. Tap ✏️ to type the key with the Meta keyboard — type the whole key, it replaces the old one. Point at ⚙️ or an empty part of this panel and pull the trigger to close.'+(CONFIG.META_API_KEY?' (A key in MANUAL CONFIG overrides this on reload.)':''))}
 function setPanel(name){panelOpen=panelOpen===name?null:name;helpPanel.visible=panelOpen==='help';cogPanel.visible=panelOpen==='cog';for(const b of cogBtns)b.visible=panelOpen==='cog';if(panelOpen==='help'){helpOpen=-1;drawHelp()}for(const b of helpHits)b.visible=panelOpen==='help';if(panelOpen==='cog')drawCog()}
 
 let recog=null,listening=false,transcript='',silenceTimer=null,mediaRec=null,mediaChunks=[],voiceMode='translate';
@@ -671,9 +671,10 @@ async function finishAsk(said,shot){
 
 const ORB_DIST=2.3,FAIRY_DIST=2.5,FS=2.55,ORB_K=ORB_DIST/1.5,EMERGE_MS=1400;let ORB_SIDE=.1,FAIRY_SIDE=.22,sparkSideT=0;
 const SPARK_CANDIDATES=[0,.18,-.18,.36,-.36,.54,-.54];
-const UPV=new THREE.Vector3(0,1,0),_fw=new THREE.Vector3(),_rt=new THREE.Vector3(),_ey=new THREE.Vector3(),_tp=new THREE.Vector3(),_tp2=new THREE.Vector3();
+const UPV=new THREE.Vector3(0,1,0),_fw=new THREE.Vector3(),_rt=new THREE.Vector3(),_ey=new THREE.Vector3(),_tp=new THREE.Vector3(),_tp2=new THREE.Vector3(),_lastFw=new THREE.Vector3(0,0,-1);
 
-function frontPos(dist,side,drop,out){camera.getWorldDirection(_fw);_fw.y*=.35;_fw.normalize();worldPos(camera,_ey);
+function frontPos(dist,side,drop,out){camera.getWorldDirection(_fw);_fw.y=0;/* flat heading only: looking up/down must never shrink the distance */
+ if(_fw.lengthSq()<.04)_fw.copy(_lastFw);else{_fw.normalize();_lastFw.copy(_fw)}worldPos(camera,_ey);
  const bx=_fw.x,bz=_fw.z;let ang=0;
  if(!arMode){/* keep the full distance: if the room wall would squash it, turn toward open space */
   const inside=a=>{const c=Math.cos(a),sn=Math.sin(a),fx=bx*c-bz*sn,fz=bx*sn+bz*c,l=Math.hypot(fx,fz)||1,px=_ey.x+fx/l*dist*Math.hypot(bx,bz),pz=_ey.z+fz/l*dist*Math.hypot(bx,bz);return Math.abs(px)<=4.5&&Math.abs(pz)<=4.5};
@@ -854,21 +855,46 @@ async function metaTranscribe(wav){
  let j;try{j=JSON.parse(raw)}catch(_){throw new Error('unreadable reply: '+raw.slice(0,120))}
  return String(j.transcript||'').trim()}
 
-/* No-key fallback: the headset's own keyboard dictation (the mic button on the Meta system keyboard).
+/* Typed/keyboard path (search, API key, and last-resort voice when speech recognition is unavailable).
    Nothing is shown (no orb) until text actually comes back, so an empty dictation leaves no Spark behind. */
 function runTyped(kind,text){(async()=>{thinkingCount++;try{const shot=CONFIG.SCENE_IMAGE===false?null:await requestSceneShot();if(kind==='ask')await finishAsk(text,shot);else await finishVoice(text,shot)}finally{thinkingCount--}})()}
 function showListeningUI(s){
  if(s.mode==='ask'){summonOrb();voicePanel.visible=true;voicePanel.userData.draw('🧚 Ask Spark…','Speak your question. A ball of light is forming in front of you — release the trigger and Spark will answer: the fairy emerges from it. Wave your free hand through this box to cancel.');setStatus('🧚 Ask Spark — speak your question, release the trigger to send.')}
  else{voicePanel.visible=true;voicePanel.userData.draw('🎙️ Listening…','Speak now. Release the trigger to send. Wave your right hand through this box to cancel.');setStatus('Listening… release the trigger to send.')}}
 function abortSession(s,msg){s.cancelled=true;listening=false;clearInterval(s.watch);if(s.cap){stopCapture(s.cap,true);s.cap=null}
+ if(s.sr){try{s.sr.abort()}catch(_){}}
  voicePanel.visible=false;if(s.mode==='ask')fairyDismiss();setStatus(msg)}
 const MIC_WAIT_MS=1500,NO_SPEECH_MS=5000;
+const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
+/* Headset speech recognition: the same system dictation engine the Meta keyboard's mic button uses,
+   started directly so no keyboard ever appears. */
+function beginSysSpeech(s){
+ const r=new SpeechRec();r.lang=navigator.language||'en-US';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
+ s.sr=r;s.sys=true;s.final='';s.interim='';s.heardSys=false;s.restarts=0;s.srReady=false;
+ r.onstart=()=>{if(s.cancelled||s.released)return;if(!s.srReady){s.srReady=true;s.sysT0=performance.now();showListeningUI(s)}};
+ r.onresult=e=>{let f='',i='';for(let k=0;k<e.results.length;k++){const t=e.results[k][0].transcript;if(e.results[k].isFinal)f+=t+' ';else i+=t}
+  s.final=f;s.interim=i;if((f+i).trim())s.heardSys=true};
+ r.onerror=e=>{const c=e.error;if(c==='no-speech'||c==='aborted')return;
+  if(c==='not-allowed'||c==='service-not-allowed'){if(!s.cancelled&&!s.released){abortSession(s,'Speech recognition is not allowed — allow the microphone for this site and try again.');showErr('Headset speech recognition blocked ('+c+').')}}
+  else if(!s.cancelled&&!s.released){console.warn('[SpeechRec]',c);s.srErr=c}};
+ r.onend=()=>{if(s.srDone){s.srDone();return}
+  if(!s.cancelled&&!s.released&&s.restarts<8){s.restarts++;try{r.start()}catch(_){}}};
+ r.start()}
 function startListening(mode){if(listening)return;voiceMode=mode||'translate';
+ const s={released:false,cancelled:false,cap:null,sr:null,sys:false,mode:voiceMode,t0:performance.now(),watch:0};
  if(!settings.key){
-  setStatus('🎙️ No Meta key — use the keyboard: tap its mic button, speak, then press Done.');
+  if(SpeechRec){
+   curSession=s;listening=true;setStatus('Starting headset speech recognition…');
+   try{beginSysSpeech(s)}catch(e){abortSession(s,'Could not start headset speech recognition.');showErr('Speech recognition unavailable: '+e.message);return}
+   s.watch=setInterval(()=>{if(s.cancelled||s.released){clearInterval(s.watch);return}const now=performance.now();
+    if(!s.srReady){if(now-s.t0>3000)abortSession(s,'Speech recognition did not start (permission pending or denied) — cancelled.')}
+    else if(!s.heardSys&&now-s.sysT0>NO_SPEECH_MS+2000)abortSession(s,'Didn\'t hear anything — cancelled.')},150);
+   return}
+  /* last resort only: this browser has no speech recognition at all */
+  setStatus('🎙️ This browser has no speech recognition — use the keyboard: tap its mic button, speak, then press Done.');
   openSystemKeyboard(voiceMode==='ask'?'ask':'say');return}
  if(!navigator.mediaDevices?.getUserMedia){showErr('This browser has no microphone access.');return}
- const s={released:false,cancelled:false,cap:null,mode:voiceMode,t0:performance.now(),watch:0};curSession=s;listening=true;
+ curSession=s;listening=true;
  setStatus('Requesting the microphone…');
  s.watch=setInterval(()=>{if(s.cancelled||s.released){clearInterval(s.watch);return}const now=performance.now();
   if(!s.cap){if(now-s.t0>MIC_WAIT_MS)abortSession(s,'Microphone not ready (permission pending or denied) — cancelled. Allow the mic and try again.')}
@@ -876,6 +902,8 @@ function startListening(mode){if(listening)return;voiceMode=mode||'translate';
  beginCapture().then(c=>{if(s.cancelled){stopCapture(c,true);return}s.cap=c;c.t0=performance.now();showListeningUI(s)})
   .catch(e=>{if(s.cancelled)return;abortSession(s,'Could not start the microphone.');showErr('Microphone unavailable: '+e.message)})}
 function releaseVoice(){if(!listening)return;listening=false;voicePanel.visible=false;const s=curSession;s.released=true;clearInterval(s.watch);
+ if(s.sys){if(!s.srReady){s.cancelled=true;try{s.sr.abort()}catch(_){}if(s.mode==='ask')fairyDismiss();setStatus('Speech recognition was not ready — nothing sent.');return}
+  thinkingCount++;processSysRelease(s);return}
  if(!s.cap){s.cancelled=true;if(s.mode==='ask')fairyDismiss();setStatus('Microphone was not ready — nothing sent.');return}
  thinkingCount++;processRelease(s)}
 async function processRelease(s){
@@ -890,6 +918,18 @@ async function processRelease(s){
   setStatus('Heard: "'+said+'"');
   if(s.mode==='ask')finishAsk(said,await shotP);else finishVoice(said,await shotP)}
  catch(e){if(s.mode==='ask')fairyDismiss();showErr('Muse Voice Transcribe failed: '+e.message);setStatus('Transcription failed — nothing sent.')}
+ finally{thinkingCount--}}
+
+async function processSysRelease(s){
+ try{
+  await new Promise(res=>{let d=false;const fin=()=>{if(!d){d=true;res()}};s.srDone=fin;try{s.sr.stop()}catch(_){fin()}setTimeout(fin,1600)});
+  try{s.sr.abort()}catch(_){}
+  const said=((s.final||'')+' '+(s.interim||'')).trim().replace(/\s+/g,' ');
+  if(!said){if(s.mode==='ask')fairyDismiss();setStatus('Nothing heard — nothing sent.');return}
+  setStatus('Heard: "'+said+'"');
+  const shot=CONFIG.SCENE_IMAGE===false?null:await requestSceneShot();
+  if(s.mode==='ask')finishAsk(said,shot);else finishVoice(said,shot)}
+ catch(e){if(s.mode==='ask')fairyDismiss();showErr('Speech recognition failed: '+e.message);setStatus('Speech recognition failed — nothing sent.')}
  finally{thinkingCount--}}
 
 function breakSentence(){if(!voicePanel.visible||!curSession)return;abortSession(curSession,'✂️ Cancelled — nothing was sent.')}
@@ -1041,7 +1081,7 @@ function solveArm(S,H,pole,L1=ARM1,L2=ARM2){
  return{el:S.clone().addScaledVector(dir,a).addScaledVector(p,h),ha:S.clone().addScaledVector(dir,d)}}
 
 const WHEEL_D=.85;
-const wDrag={x:0,y:0},vrOff=new THREE.Vector3();let wDragging=false,wGrabA={x:0,y:0},wGrabOff=new THREE.Vector3(),aimHitW=new THREE.Vector3();
+const wDrag={x:0,y:0},vrOff=new THREE.Vector3(),wBase=new THREE.Vector3(),_dragHand=new THREE.Vector3(),_dragTgt=new THREE.Vector3();let wDragging=false,wGrabA={x:0,y:0},wGrabOff=new THREE.Vector3(),aimHitW=new THREE.Vector3();
 function wheelLayout(){const halfH=WHEEL_D*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),halfW=halfH*camera.aspect;
  const sc=Math.min(1.4,(halfH*1.5)/1.02,(halfW*1.9)/1.02);const xOff=-Math.min(.3,Math.max(0,halfW-.45*sc));return{halfH,halfW,sc,xOff:xOff+wDrag.x,yOff:-.04+wDrag.y}}
 function searchOver(m){const l=wheelLayout();return Math.abs((m.x*l.halfW-l.xOff)/l.sc-SEARCH_P.x)<SEARCH_HW&&Math.abs((m.y*l.halfH-l.yOff)/l.sc-SEARCH_P.y)<SEARCH_HH*1.3}
@@ -1275,7 +1315,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
  if(wheelOpen){
   let aim=null;
   if(inXR){const wc=ctrlHand[wheelHand]||ctrlHand.left;wheel.scale.setScalar(1.05*spawnScale());worldPos(wc,tmpV);const dir=new THREE.Vector3(0,0,-1).applyQuaternion(wc.getWorldQuaternion(new THREE.Quaternion()));
-   wheel.position.copy(tmpV).addScaledVector(dir,.14).add(new THREE.Vector3(0,.12,0)).add(vrOff);wheel.lookAt(worldPos(camera,tmpV2))}
+   wBase.copy(tmpV).addScaledVector(dir,.14).add(new THREE.Vector3(0,.12,0));wheel.position.copy(wBase).add(vrOff);wheel.lookAt(worldPos(camera,tmpV2))}
   else{const l=wheelLayout();wheel.scale.setScalar(l.sc*spawnScale());
    wheel.position.copy(new THREE.Vector3(l.xOff,l.yOff,-WHEEL_D).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).add(worldPos(camera,tmpV)));
    wheel.quaternion.copy(camera.getWorldQuaternion(new THREE.Quaternion()));
@@ -1307,9 +1347,16 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    else if(grab&&!wasGrab&&aim&&!sHot&&!kb&&!uiAim){
     let cm=null,cd=.048;for(const m of emojiMeshes){const d=Math.hypot(aim.x-m.userData.home.x,aim.y-m.userData.home.y);if(d<cd){cd=d;cm=m}}
     if(cm){selectEmoji(cm.userData.emoji);clickedPeg=cm;ballPos.set(cm.userData.home.x,cm.userData.home.y);ballTarget.copy(ballPos);if(inXR)haptic(aimHand,.7,35)}
-    else if(Math.hypot(aim.x,aim.y)<=WHEEL_R+.04){wDragging=true;wGrabA={x:aim.x,y:aim.y};if(inXR){wGrabOff.copy(wheel.position).sub(aimHitW);haptic(aimHand,.3,20)}}}}
+    else if(Math.hypot(aim.x,aim.y)<=WHEEL_R+.04){wDragging=true;wGrabA={x:aim.x,y:aim.y};if(inXR){wGrabOff.copy(wheel.position).sub(worldPos(ctrlHand[aimHand],_dragHand));haptic(aimHand,.3,20)}}}}
   if(!grab||ballHeld)wDragging=false;
-  if(wDragging&&inXR&&aim){const np=aimHitW.clone().add(wGrabOff);vrOff.add(np.clone().sub(wheel.position));wheel.position.copy(np);wheel.updateMatrixWorld(true)}
+  if(wDragging&&inXR){/* the wheel is carried by the physical hand (position only, never the pointing direction), eased so it glides */
+   worldPos(ctrlHand[aimHand],_dragHand);_dragTgt.copy(_dragHand).add(wGrabOff).sub(wBase);
+   vrOff.lerp(_dragTgt,1-Math.exp(-dt*14));
+   if(vrOff.length()>1.4)vrOff.setLength(1.4);
+   wheel.position.copy(wBase).add(vrOff);
+   {const hp=worldPos(camera,tmpV2),dv=wheel.position.clone().sub(hp),dl=dv.length();/* keep it within comfortable reach of the head */
+    if(dl>1.5||dl<.4){dv.setLength(Math.min(1.5,Math.max(.4,dl)));wheel.position.copy(hp).add(dv);vrOff.copy(wheel.position).sub(wBase)}}
+   wheel.updateMatrixWorld(true)}
   if(ballHeld){
    if(aim)ballTarget.set(aim.x+holdOff.x,aim.y+holdOff.y)}
   else if(clickedPeg)ballTarget.set(clickedPeg.userData.home.x,clickedPeg.userData.home.y);else ballTarget.set(0,0);
