@@ -35,12 +35,13 @@ body.ar-on #c{background:transparent}
 <div id="hud"><button id="hudX" aria-label="Close tips">✕</button><b>Emoji Room</b> — tap a topic for details
 <details name="hudsec"><summary>🎡 Emoji wheel</summary><p>Press the <b>index trigger</b> on either controller (desktop: press <b>L</b>) to open the wheel — it opens in that hand and stays open; press again to close it and send. The golden ball rests in the centre. Point your <i>other</i> controller at it, hold its trigger (desktop: mouse button) and drag toward an emoji on the rim until the ball turns green, then <b>let go</b> to pick. Let go anywhere else and it returns to the centre. Closing the wheel sends your picks above your head for a few seconds; you can see it in the mirror.</p></details>
 <details name="hudsec"><summary>🧚 Ask Spark</summary><p>With the wheel <b>closed</b>, <b>hold the index trigger on its own</b> (desktop: hold <b>L</b>), speak your question, then let go. A quick tap still opens the wheel. A ball of light forms while you speak, then the fairy emerges and answers in emoji. It does <i>not</i> translate — it answers, using what you are looking at (in AR, the headset-camera view).</p></details>
+<details name="hudsec"><summary>💙 Spark's child avatar</summary><p>Walk up to the <b>short blue avatar</b> (Spark), <b>face it</b>, then send it some emoji — close your emoji wheel to send, or speak a voice translation. Spark receives your symbols <i>plus what the avatar sees from its own eyes</i> and replies as a young child in VR would. Watch: its own emoji wheel opens in front of it, its arm drags the golden ball to each symbol in turn, and the answer pops up above its head.</p></details>
 <details name="hudsec"><summary>🎙️ Translate to emoji</summary><p>Hold <b>index + grip</b> together on one controller with the wheel closed (desktop: hold <b>V</b>), or <b>hold the trigger of the wheel hand while the wheel is open</b> (desktop: hold <b>L</b> with the wheel open). Speak, then let go to send. Wave your free hand through the transcript box (desktop: <b>Esc</b>) to cancel.</p></details>
 <details name="hudsec"><summary>📷 AR / VR</summary><p>Tap <b>AR Mode</b> at the top (or the 📷 button in-headset) to switch between the virtual room and the real world through the headset cameras, without leaving the headset. Ask Spark uses that real-world view.</p></details>
 <details name="hudsec"><summary>🕹️ Moving &amp; pages</summary><p>The <b>left thumbstick</b> (desktop: <b>WASD</b>, drag to look) walks you around, even with the wheel open. The <b>right thumbstick left/right</b> (desktop: <b>Q/E</b> or arrows) flips wheel pages, or snap-turns you when the wheel is closed. <b>A</b> (right controller) / <b>Space</b> (desktop) jumps. <b>B / Y</b> closes the wheel without sending.</p></details>
 <details name="hudsec"><summary>🔍 Search</summary><p>With the wheel open, point your <i>other</i> controller at the search box under the page name and pull its trigger (desktop: click it and type, Enter to search). Results appear on wheel page 2 and clear when the wheel closes.</p></details>
 <details name="hudsec"><summary>⚙️ Settings &amp; hands</summary><p>In VR, point at ⚙️ at the top of your view, pull the trigger, then tap ✏️ to type your API key with the Meta keyboard (Meta Quest Browser 26.1+). With hand tracking, pinch index = trigger and pinch middle finger = grip. On desktop your right arm points wherever the mouse cursor points.</p></details>
-<details name="hudsec"><summary>🙂 Face, eyes &amp; hands</summary><p>Your avatar's <b>mouth moves as you talk</b> (microphone lip-sync, with wide smiles on "ee"/"s" sounds and rounded lips on "oo"), it <b>blinks</b>, its <b>eyes follow</b> the wheel or fairy, and the <b>brows and smile react</b> to the emoji you send. If your headset exposes WebXR face tracking (e.g. Quest Pro) the real expression data takes over. <b>Fingers</b> curl with your trigger, grip and thumb. Turn the mic lip-sync off in ⚙️.</p></details>
+<details name="hudsec"><summary>🙂 Face, eyes &amp; hands</summary><p>Your avatar's <b>mouth moves as you talk</b> (microphone lip-sync, with wide smiles on "ee"/"s" sounds and rounded lips on "oo"), it <b>blinks</b>, its <b>eyes follow</b> the wheel or fairy, and the <b>brows and smile react</b> to the emoji you send. If your headset exposes WebXR face tracking (e.g. Quest Pro) the real expression data takes over. <b>Fingers</b> curl with your trigger, grip and thumb. Turn the mic lip-sync off in ⚙️. Sound effects can be switched off and on there too.</p></details>
 <div id="seq"> </div><div id="status">Walk around the room and check yourself out in the mirror. WASD / left stick moves, drag looks around.</div></div>
 <button id="arBtn" title="AR mode — use headset cameras (passthrough) instead of the VR room">📷 AR Mode</button>
 <button id="vrBtn">Enter VR</button>
@@ -52,6 +53,7 @@ body.ar-on #c{background:transparent}
 <label>Muse Spark endpoint</label><input id="kSparkUrl" type="text">
 <label>Muse Spark model</label><input id="kSparkModel" type="text">
 <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="kLip" type="checkbox" style="width:auto"> Lip-sync &amp; expressions from microphone (mouth moves when you talk)</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="kSfx" type="checkbox" style="width:auto"> Sound effects (emoji notes, wheel shimmer, fairy chime)</label>
 <div><button id="saveSet">Save</button> <button id="closeSet" class="ghost">Close</button> <button id="clearSet" class="ghost">Clear key</button></div>
 <p class="note">Spark receives one message: for translation, a short instruction to translate what you said into an emoji sequence of 12 or less; for Ask Spark (trigger-hold, wheel closed), an instruction to actually answer your question helpfully as a separate assistant, using the scene image for context. Lewd or hateful content is not translated.</p></div></div>
 
@@ -87,10 +89,18 @@ const EMOJI_CATEGORIES=[
  ["⏰ Time & Events","Time, calendar, parties & feelings of occasion","⏰ ⏱️ ⏲️ 🕰️ ⌛ ⏳ 📅 📆 🗓️ 🎉 🎊 🎁 🎂 🎈 🎀 🎗️ 🏆 🥳 🎄 🎃 🎆 🎇 🧨 ✨ 💤 💯 🔔 🔕 📣 📢 💬 💭 🗯️ ♻️ 🔄 🔁 🔂 ▶️ ⏩ ⏪ ⏯️ ⏸️ ⏹️"],
  ["❤️ Symbols & Grammar","Hearts, yes/no, arrows, grammar glue","❤️ 🧡 💛 💚 💙 💜 🤍 🖤 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 ✨ ⭐ 🔴 🟠 🟡 🟢 🔵 🟣 🟤 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 🟫 ⬛ ⬜ 🔶 🔷"],
  ["✅ Signs & Logic","Agreement, negation, questions & connectors","✅ ❌ ❗ ❓ ⁉️ ‼️ ❔ ❕ 🛑 🚫 ⛔ ⚠️ 🆘 ➕ ➖ ➗ ✖️ 🟰 ♾️ 🔀 🔁 🔂 🔄 🔃 ⤴️ ⤵️ ↔️ ↕️ ↖️ ↗️ ↘️ ↙️ ⬆️ ⬇️ ⬅️ ➡️ 🔼 🔽 👉 👆 🔝 🔙 🔜 🔛"],
- ["🔟 Numbers & Letters","Numbers, maths, sizes & boxed letters for names","0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟 #️⃣ *️⃣ 🔢 🔤 🔡 🔠 🆔 🆕 🆗 🆙 🆒 🆓 🆖 🅰️ 🅱️ 🆎 🅾️ 🅿️ Ⓜ️ 🄰 🄱 🄲 🄳 🄴 🄵 🄶 🄷 🄸 🄹 🄺 🄻"],
- ["🔤 Letters II","More boxed letters for spelling names & new words","🄼 🄽 🄾 🄿 🅀 🅁 🅂 🅃 🅄 🅅 🅆 🅇 🅈 🅉 🔼 🔽 ⏫ ⏬ 🐘 🐭 📏 📐 🔍 🔎 🧩 ➰ ➿ 〰️ ©️ ®️ ™️ 💠 🔘 🔳 🔲 ◼️ ◻️ ▪️ ▫️"]];
-const PRUNE=new Set(`😃 😄 😆 😅 🤣 😗 😙 😚 😛 😝 😔 😟 🙁 😖 😫 😩 😣 😠 😥 😓 😑 🫣 😲 😵‍💫 😪 🫥 🥸 🫤 🤚 🖐️ 🤌 🫰 ☝️ 👊 🦻 👁️ 🧒 🧓 👥 🧑‍🦱 🧑‍🦰 🧑‍🦳 👨‍👩‍👦 👩‍👩‍👧 👨‍👨‍👧 🧑‍🎄 🚶‍➡️ 🏃‍➡️ 🧎‍➡️ 🧑‍🦽 🧑‍🦯 🏂 🚵 ⛹️ 🛼 🙉 🙊 🐒 🐣 🦐 🦞 🐋 🐡 🪲 🦗 🐞 🐫 🦧 ☘️ 🍃 🍂 🌼 🌺 ⛰️ 🌎 🌏 🌤️ 🌥️ 🌩️ ☃️ 🌬️ 🌟 🌄 🌆 🌃 🍐 🥭 🫐 🥬 🍠 🫘 🌰 🧇 🌯 🥙 🧆 🍲 🍱 🍙 🍚 🥟 🍧 🍨 🍰 🧁 🫖 🧃 🧋 🏘️ 🏨 🏪 🪧 🚏 🚙 🛻 🚆 🚊 🚉 🛫 🛬 🛳️ 🦼 🏉 🏑 🏐 🥈 🥉 🎖️ 🎗️ 🎵 🎼 🪕 🪗 🪈 🎷 📸 📹 📗 📘 📙 🖍️ 🎚️ 🎛️ 📳 📴 🔎 ⏲️ 🕰️ ⏱️ ⌛ 📆 🗓️ ⛓️ 🖇️ 📐 🧫 ⚗️ ⚒️ 🛠️ ⛏️ 🔐 🪔 💵 🛍️ 📨 📩 📤 📥 🗃️ 🗄️ 📂 👔 👓 ⏯️ ⏸️ 🔂 🔁 🎊 🎇 🗯️ 📢 ❣️ 💞 💓 💗 💖 💘 💝 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔶 🔷 ⁉️ ‼️ ❔ ❕ ⛔ 🔃 ⤴️ ⤵️ 🔜 🔛 🔡 🔠 🆙 🆒 🆓 🆖 ⏫ ⏬ ▪️ ▫️ 🔳`.split(/\s+/).map(e=>e.replace(/\uFE0F/g,'')));
+ ["🔟 Numbers & Letters","Numbers, maths, sizes & boxed letters for names","0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟 #️⃣ *️⃣ 🔢 🔤 🔡 🔠 🆔 🆕 🆗 🆙 🆒 🆓 🆖 🅰️ 🅱️ 🆎 🅾️ 🅿️ Ⓜ️ 🄰 🄱 🄲 🄳 🄴 🄵 🄶 🄷 🄸 🄹 🄺 🄻"]];
+const PRUNE=new Set(`😃 😄 😆 😅 🤣 😗 😙 😚 😛 😝 😔 😟 🙁 😖 😫 😩 😣 😠 😥 😓 😑 🫣 😲 😵‍💫 😪 🫥 🥸 🫤 🤚 🖐️ 🤌 ☝️ 🦻 👁️ 🧒 🧓 👥 🧑‍🦱 🧑‍🦰 🧑‍🦳 👨‍👩‍👦 👩‍👩‍👧 👨‍👨‍👧 🧑‍🎄 🚶‍➡️ 🏃‍➡️ 🧎‍➡️ 🧑‍🦽 🧑‍🦯 🏂 🚵 ⛹️ 🛼 🙉 🙊 🐒 🐣 🦐 🦞 🐋 🐡 🪲 🦗 🐞 🐫 🦧 ☘️ 🍃 🍂 🌼 🌺 ⛰️ 🌎 🌏 🌤️ 🌥️ 🌩️ ☃️ 🌬️ 🌟 🌄 🌆 🌃 🍐 🥭 🫐 🥬 🍠 🫘 🌰 🧇 🌯 🥙 🧆 🍲 🍱 🍙 🍚 🥟 🍧 🍨 🍰 🧁 🫖 🧃 🧋 🏘️ 🏨 🏪 🪧 🚏 🚙 🛻 🚆 🚊 🚉 🛫 🛬 🛳️ 🦼 🏉 🏑 🏐 🥈 🥉 🎖️ 🎗️ 🎵 🎼 🪕 🪗 🪈 🎷 📸 📹 📗 📘 📙 🖍️ 🎚️ 🎛️ 📳 📴 🔎 ⏲️ 🕰️ ⏱️ ⌛ 📆 🗓️ ⛓️ 🖇️ 📐 🧫 ⚗️ ⚒️ 🛠️ ⛏️ 🔐 🪔 💵 🛍️ 📨 📩 📤 📥 🗃️ 🗄️ 📂 👔 👓 ⏯️ ⏸️ 🔂 🔁 🎊 🎇 🗯️ 📢 ❣️ 💞 💓 💗 💖 💘 💝 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔶 🔷 ⁉️ ‼️ ❔ ❕ ⛔ 🔃 ⤴️ ⤵️ 🔜 🔛 🔡 🔠 🆙 🆒 🆓 🆖 ⏫ ⏬ ▪️ ▫️ 🔳`.split(/\s+/).map(e=>e.replace(/\uFE0F/g,'')));
 for(const c of EMOJI_CATEGORIES)c[2]=c[2].split(/\s+/).filter(e=>e&&!PRUNE.has(e.replace(/\uFE0F/g,''))).join(' ');
+
+
+/* SAFETY BLOCK-LIST: emoji removed from the wheel, search, local translator and Spark output.
+   Covers sexual/innuendo symbols, fetish & bodily-fluid imagery, drug/self-harm items,
+   hateful-trope pairings, and boxed letters (which can spell slurs/profanity). */
+const BLOCKED_STR=`🍒 🍑 🍆 🍌 🥒 🌭 💦 🚿 🛁 🛀 🧖 🛌 🛏️ 🧎 🤼 🤰 🤱 🤏 ✊ 🦶 👣 👠 🚽 🧻 🧴 😏 😉 😘 😋 😜 😛 😝 🥵 😈 👿 🤤 😳 😮‍💨 🥴 🫦 👅 👄 💋 🔞 🅰️ 🅱️ 🆎 🅾️ 🅿️ Ⓜ️ #️⃣ *️⃣ 🔤 🔡 🔠 ©️ ®️ ™️ ${'🄰 🄱 🄲 🄳 🄴 🄵 🄶 🄷 🄸 🄹 🄺 🄻 🄼 🄽 🄾 🄿 🅀 🅁 🅂 🅃 🅄 🅅 🅆 🅇 🅈 🅉'}`;
+const BLOCKED=new Set(BLOCKED_STR.split(/\s+/).filter(Boolean).map(e=>e.replace(/\uFE0F/g,'')));
+const isBlocked=e=>BLOCKED.has(String(e).replace(/\uFE0F/g,''));
+for(const c of EMOJI_CATEGORIES)c[2]=c[2].split(/\s+/).filter(e=>e&&!isBlocked(e)).join(' ');
 
 const ALL=[...new Set(EMOJI_CATEGORIES.flatMap(c=>c[2].split(/\s+/).filter(Boolean)))];
 const ALLOWED=new Set(ALL);
@@ -140,8 +150,9 @@ const STALE=['https://api.meta.ai/v1/muse-spark/chat/completions','https://api.m
 for(const k of['museTransUrl','museSparkUrl','museSparkModel'])if(STALE.includes(localStorage.getItem(k)))localStorage.removeItem(k);
 const CONFIG=window.MANUAL_CONFIG||{};
 const settings={key:CONFIG.META_API_KEY||localStorage.getItem('museMetaApiKey')||'',transUrl:CONFIG.TRANSCRIBE_URL||localStorage.getItem('museTransUrl')||DEF_T,sparkUrl:CONFIG.SPARK_URL||localStorage.getItem('museSparkUrl')||DEF_S,model:CONFIG.SPARK_MODEL||localStorage.getItem('museSparkModel')||'muse-spark-1.3'};
+let sfxOn=true;try{sfxOn=localStorage.getItem('sfxOn')!=='0'}catch(_){}
 const $=id=>document.getElementById(id);
-$('kMeta').value=settings.key;$('kTransUrl').value=settings.transUrl;$('kSparkUrl').value=settings.sparkUrl;$('kSparkModel').value=settings.model;$('kLip').checked=localStorage.getItem('lipSync')!=='0';
+$('kMeta').value=settings.key;$('kTransUrl').value=settings.transUrl;$('kSparkUrl').value=settings.sparkUrl;$('kSparkModel').value=settings.model;$('kLip').checked=localStorage.getItem('lipSync')!=='0';$('kSfx').checked=sfxOn;$('kSfx').onchange=()=>setSfx($('kSfx').checked);
 $('help').onclick=()=>$('hud').classList.toggle('open');
 $('hudX').onclick=()=>$('hud').classList.remove('open');
 $('cog').onclick=()=>$('modal').classList.add('open');
@@ -279,8 +290,8 @@ function makeHuman(){
  }
  const mg=new THREE.Group();mg.position.set(0,-.062,-.099);head.add(mg);F.mouth=mg;F.jaw=jaw;
  const inner=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),new THREE.MeshStandardMaterial({color:0x3a1a1c,roughness:.8}));inner.visible=false;inner.position.z=.002;mg.add(inner);F.inner=inner;
- const upLip=new THREE.Mesh(new THREE.BoxGeometry(.04,.0062,.008),lipMat);mg.add(upLip);F.upLip=upLip;
- const loLip=new THREE.Mesh(new THREE.BoxGeometry(.04,.0075,.008),lipMat);loLip.position.y=-.0062;mg.add(loLip);F.loLip=loLip;
+ const mkLip=h=>{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.BoxGeometry(.017,h,.008),lipMat));g.userData.sides=[-1,1].map(sd=>{const m=new THREE.Mesh(new THREE.BoxGeometry(.0125,h,.008),lipMat);m.position.x=sd*.0145;g.add(m);return m});return g};const upLip=mkLip(.0062);mg.add(upLip);F.upLip=upLip;
+ const loLip=mkLip(.0075);loLip.position.y=-.0062;mg.add(loLip);F.loLip=loLip;
  for(const k of['L','R']){const c=new THREE.Mesh(new THREE.SphereGeometry(.0065,8,6),lipMat);mg.add(c);F['corner'+k]=c}
 
  const mkHand=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),skin));m.scale.set(.9,.5,1.35);return m};
@@ -504,12 +515,12 @@ function billboard(r,sc,cam){
  const ox=(col-(rc-1)/2)*ROW_H*sg,oy=(rows-1-row)*ROW_H;
  this.position.set(Math.cos(yaw)*ox,oy,-Math.sin(yaw)*ox);this.rotation.set(0,yaw,0);this.scale.set(sg*u.sc,u.sc,u.sc);
  this.updateMatrix();this.matrixWorld.multiplyMatrices(g.matrixWorld,this.matrix)}
-function popSequence(list){
- list=list.slice(0,MAX_EMOJI);if(!list.length)return;try{triggerEmote(list)}catch(_){}
+function popSequence(list,anchor){
+ list=list.slice(0,MAX_EMOJI);if(!list.length)return;if(!anchor)try{triggerEmote(list)}catch(_){}
 
  {let total=list.length;for(let i=overheadAnims.length-1;i>=0;i--){const o=overheadAnims[i];if(o.leaving)continue;total+=o.n;if(total>MAX_EMOJI){const el=performance.now()-o.start;o.leaving=true;o.fade=350;o.life=Math.min(o.life,el+350)}}}
  const g=new THREE.Group();scene.add(g);
- const a={g,items:[],n:list.length,start:performance.now(),yOff:0,fade:FADE_MS,leaving:false,life:(list.length-1)*STAGGER+HOLD_MS+FADE_MS};
+ const a={g,items:[],n:list.length,start:performance.now(),yOff:0,fade:FADE_MS,leaving:false,life:(list.length-1)*STAGGER+HOLD_MS+FADE_MS,anchor:anchor||null};
  list.forEach((e,j)=>{const m=emojiPlane(e,.4,512);m.visible=false;m.userData.j=j;m.userData.a=a;m.userData.sc=.01;m.onBeforeRender=billboard;m.frustumCulled=false;g.add(m);a.items.push(m)});
  overheadAnims.push(a)}
 
@@ -541,6 +552,7 @@ const HELP_SECS=[
  ['📷 AR / VR','The 📷 button at the top switches between the virtual room and the real world through your headset cameras, without leaving the headset.'],
  ['🕹️ Moving & pages','Left thumbstick walks. Right thumbstick left/right flips wheel pages, or turns you when the wheel is closed. A jumps. B / Y closes the wheel without sending.'],
  ['🔍 Search','With the wheel open, point your other controller at the search box under the page name and pull the trigger. Type with the Meta keyboard; results show on page 2. The search clears when the wheel closes.'],
+ ['💙 Spark (child avatar)','Walk up to the short blue avatar, face it, then send emoji (close your wheel, or use voice). Spark sees your symbols and the room from the avatar\'s own eyes, then replies like a young child in VR — its own wheel opens and its arm drags the golden ball to each symbol before the answer appears above its head.'],
  ['⚙️ Settings','Point at ⚙️ and pull the trigger, then tap ✏️ to type your Meta API key with the Meta keyboard (Quest Browser 26.1+).']];
 let helpOpen=-1;const helpCv=helpPanel.material.map.image,HELP_ROW=64,HELP_TOP=78,helpHits=[];
 function helpWrap(g,text,maxW){const out=[];let line='';for(const wd of text.split(/\s+/)){const t=line?line+' '+wd:wd;if(g.measureText(t).width>maxW&&line){out.push(line);line=wd}else line=t}if(line)out.push(line);return out}
@@ -560,12 +572,12 @@ function toggleHelpSec(i){helpOpen=helpOpen===i?-1:i;drawHelp()}
 let panelOpen=null;
 
 function uiRectBtn(id,label,x,y,w,h){const W=512,H=Math.round(512*h/w),cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');
- g.fillStyle='#111';g.beginPath();g.roundRect(4,4,W-8,H-8,H/2.4);g.fill();g.strokeStyle='#ffd34d';g.lineWidth=6;g.stroke();
- g.fillStyle='#fff';g.font='700 '+Math.round(H*.4)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(label,W/2,H/2+4);
+ const paint=lb=>{g.clearRect(0,0,W,H);g.fillStyle='#111';g.beginPath();g.roundRect(4,4,W-8,H-8,H/2.4);g.fill();g.strokeStyle='#ffd34d';g.lineWidth=6;g.stroke();
+ g.fillStyle='#fff';g.font='700 '+Math.round(Math.min(H*.4,48.9))+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(lb,W/2,H/2+4)};paint(label);
  const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=MAXA;
  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true,depthTest:false}));
- m.position.set(x,y,-.94);m.renderOrder=1000;m.visible=false;m.userData.btn=id;m.userData.hit=[w/2+.01,h/2+.01];m.userData.hs=1.08;ui.add(m);return m}
-const cogBtns=[uiRectBtn('editKey','✏️ Enter API key',-.24,-.22,.42,.1),uiRectBtn('clearKey','🗑️ Clear key',.24,-.22,.42,.1)];
+ m.position.set(x,y,-.94);m.renderOrder=1000;m.visible=false;m.userData.btn=id;m.userData.hit=[w/2+.01,h/2+.01];m.userData.hs=1.08;m.userData.setLabel=lb=>{paint(lb);t.needsUpdate=true};ui.add(m);return m}
+const cogBtns=[uiRectBtn('editKey','✏️ API key',-.33,-.22,.31,.1),uiRectBtn('clearKey','🗑️ Clear key',0,-.22,.31,.1),uiRectBtn('toggleSfx',sfxOn?'🔊 Sound: On':'🔇 Sound: Off',.33,-.22,.31,.1)];
 for(let i=0;i<HELP_SECS.length;i++){const hm=new THREE.Mesh(new THREE.PlaneGeometry(.94,(HELP_ROW-8)/1000),new THREE.MeshBasicMaterial({visible:false}));hm.position.set(0,.02,-.94);hm.visible=false;hm.userData.btn='help:'+i;hm.userData.hit=[.47,(HELP_ROW-8)/2000];hm.userData.hs=1;ui.add(hm);helpHits.push(hm)}
 drawHelp();
 const uiTargets=[...uiBtns,...cogBtns,...helpHits];
@@ -574,7 +586,10 @@ const toast=textPanel(.9,.3,900,300,2);toast.position.set(0,-.3,-.9);toast.visib
 let toastUntil=0;function vrToast(title,body){return;if(!renderer.xr.isPresenting)return;toast.userData.draw(title,body);toast.visible=true;toastUntil=performance.now()+6000}
 function drawCog(typing){const k=settings.key;
  const st=typing!=null?'typing… '+typing+' characters':(k?'set ✓ (•••• '+k.slice(-4)+', '+k.length+' chars)':'NOT SET — headset speech recognition + local emoji fallback will be used');
- cogPanel.userData.draw('⚙️ Settings','Meta API key: '+st+'. With a key, speech goes to Muse Voice Transcribe and text to Muse Spark ('+settings.model+'); without one, the headset\'s built-in speech recognition listens automatically (no keyboard pops up), and your words are shown as best-matching emoji in order. Tap ✏️ to type the key with the Meta keyboard — type the whole key, it replaces the old one. Point at ⚙️ or an empty part of this panel and pull the trigger to close.'+(CONFIG.META_API_KEY?' (A key in MANUAL CONFIG overrides this on reload.)':''))}
+ cogPanel.userData.draw('⚙️ Settings','Meta API key: '+st+'. With a key, speech goes to Muse Voice Transcribe and text to Muse Spark ('+settings.model+'); without one, the headset\'s built-in speech recognition listens automatically (no keyboard pops up), and your words are shown as best-matching emoji in order. Tap ✏️ to type the key with the Meta keyboard — type the whole key, it replaces the old one. Sound effects are '+(sfxOn?'ON':'OFF')+' — tap the 🔊 button to switch. Point at ⚙️ or an empty part of this panel and pull the trigger to close.'+(CONFIG.META_API_KEY?' (A key in MANUAL CONFIG overrides this on reload.)':''))}
+function setSfx(v){sfxOn=!!v;try{localStorage.setItem('sfxOn',sfxOn?'1':'0')}catch(_){}
+ $('kSfx').checked=sfxOn;cogBtns[2].userData.setLabel(sfxOn?'🔊 Sound: On':'🔇 Sound: Off');if(panelOpen==='cog')drawCog();
+ if(sfxOn){try{pegClick(emojiMeshes[Math.floor(emojiMeshes.length/2)],true)}catch(_){}}setStatus(sfxOn?'Sound effects on.':'Sound effects off.')}
 function setPanel(name){panelOpen=panelOpen===name?null:name;helpPanel.visible=panelOpen==='help';cogPanel.visible=panelOpen==='cog';for(const b of cogBtns)b.visible=panelOpen==='cog';if(panelOpen==='help'){helpOpen=-1;drawHelp()}for(const b of helpHits)b.visible=panelOpen==='help';if(panelOpen==='cog')drawCog()}
 
 let recog=null,listening=false,transcript='',silenceTimer=null,mediaRec=null,mediaChunks=[],voiceMode='translate';
@@ -599,7 +614,7 @@ function localTranslate(text){
   if(!hit)for(const[re,e]of LOCAL_MAP){const src=re.source.replace(/\\b/g,'').replace(/[()|]/g,' ').trim();const pw=src.split(/\s+/).filter(x=>/^[a-z']+$/.test(x));if(pw.length>1&&pw.length>hitLen&&pw.every((x,k)=>words[i+k]===x)&&ALLOWED.has(e)){hit=e;hitLen=pw.length}}
   if(hit&&ALLOWED.has(hit)){units.push(hit);i+=hitLen}else if(hit){units.push(hit);i+=hitLen}else{units.push(words[i]);i++}}
  const out=[],usedEmoji=new Set(),usedGroup=new Set();
- const push=e=>{if(!e||!ALLOWED.has(e))e=e;if(!e)return;const k=nk(e);if(usedEmoji.has(k))return;const g=REDUNDANT_OF.get(k);if(g!==undefined&&usedGroup.has(g))return;usedEmoji.add(k);if(g!==undefined)usedGroup.add(g);out.push(e)};
+ const push=e=>{if(!e||isBlocked(e))return;const k=nk(e);if(usedEmoji.has(k))return;const g=REDUNDANT_OF.get(k);if(g!==undefined&&usedGroup.has(g))return;usedEmoji.add(k);if(g!==undefined)usedGroup.add(g);out.push(e)};
  for(const u of units){if(out.length>=MAX_EMOJI)break;
   if([...u].some(c=>/\p{Extended_Pictographic}/u.test(c))){push(u);continue}
   if(TRANSLATE_STOP.has(u))continue;
@@ -608,10 +623,10 @@ function localTranslate(text){
  if(!out.length)out.push('💬','✨');
  return out.slice(0,MAX_EMOJI)}
 
-const LEWD_EMOJI=new Set(['🍆','🍑','💦','🫦','🔞','🍌','👅','👄','💋']);
+const LEWD_EMOJI=new Set(['🍆','🍑','💦','🫦','🔞','🍌','👅','👄','💋','🖕','🍒','🌭','🥵']);
 function sanitizeEmojis(str){const seg=new Intl.Segmenter(undefined,{granularity:'grapheme'});const out=[];
  for(const s of seg.segment(str||'')){const g=s.segment.trim();if(!g)continue;
-  if([...LEWD_EMOJI].some(e=>g.includes(e)))continue;
+  if([...LEWD_EMOJI].some(e=>g.includes(e))||[...g].some(c=>isBlocked(c))||isBlocked(g))continue;
   if(!(/\p{Extended_Pictographic}/u.test(g)||/[0-9#*]️?⃣/.test(g)||/[\u{1F000}-\u{1FAFF}☀-➿⬀-⻿①-⓿]/u.test(g)))continue;
   out.push(g);if(out.length>=MAX_EMOJI)break}return out}
 const SPARK_PROMPT='translate this into an emoji sequence of 12 or less symbols that captures the full statement, in order. Translate only what was said: do not add events, details, outcomes or interpretation that are not in the statement, and do not pad. Use only as many symbols as the statement needs. Do not translate anything lewd or hateful.';
@@ -644,7 +659,7 @@ async function finishVoice(said,shot){
  let res;try{res=await sparkTranslate(said,shot)}finally{thinkingCount--}
  if(res.via==='local'){if(!/^no Meta API key/.test(res.why))showErr('Spark failed, so the local emoji translator was used. Reason: '+res.why);setStatus('LOCAL emoji translation (no Spark) for "'+said+'": '+res.seq.join(' '))}
  else setStatus('Voice message sent: '+res.seq.join(' '));
- if(res.seq.length)popSequence(res.seq)}
+ if(res.seq.length){popSequence(res.seq);try{maybeSparkChildRespond(res.seq)}catch(_){}}}
 
 const SPARK_ASK_PROMPT='You are Muse Spark, a knowledgeable assistant who answers out loud through emoji. The person asked a question; an image of what they are looking at is attached. Work in two steps. STEP 1 — on one line starting with "THINK:", say in plain words what the question refers to (pronouns like he/she/it/this/that mean the main subject in the image; use every visible cue: captions, plaques, signs, text, famous artworks, objects, setting) and what the correct answer is. If the subject is a well-known person, work, place or object that you can tell from such cues or from the artwork itself, name it and answer from your knowledge; if you truly cannot tell who or what it is, say what you can see and answer as helpfully as you can about that. STEP 2 — on a new line starting with "ANSWER:", give the answer as 12 or fewer emoji, in a sensible order, using the clearest, most widely understood symbols for the key facts (concrete things, not vague faces or filler). Never just restate or translate the question. Refuse lewd or hateful requests with ANSWER: 🚫. Output exactly those two lines.';
 const SCENE_NOTE_ASK_VR='The attached image is what the speaker sees in their VR room. Use it to work out what their question refers to, then answer the question itself.';
@@ -957,7 +972,7 @@ addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=
   wDrag.x=THREE.MathUtils.clamp(wDrag.x+(nx-l.xOff),-l.halfW*.9-(l.xOff-wDrag.x),l.halfW*.9-(l.xOff-wDrag.x));wDrag.y=THREE.MathUtils.clamp(wDrag.y+(ny-l.yOff),-l.halfH*.9-(l.yOff-wDrag.y),l.halfH*.9-(l.yOff-wDrag.y))}});
 /* small synthesized sound effects (no audio files) */
 let clickCtx=null,lastClickT=0,_noiseBuf=null;
-function sfxCtx(){if(!clickCtx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;clickCtx=new AC()}
+function sfxCtx(){if(!sfxOn)return null;if(!clickCtx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;clickCtx=new AC()}
  if(clickCtx.state==='suspended')clickCtx.resume();return clickCtx}
 /* quiet, metallic tick each time the golden ball passes over a peg: a few inharmonic partials with a very short decay */
 /* every emoji on the wheel has its own note: pegs climb a pentatonic scale (same family as the chimes) clockwise from the top, over 3 octaves.
@@ -1015,7 +1030,7 @@ const prevH={left:{trigger:false,squeeze:false},right:{trigger:false,squeeze:fal
 function openWheel(h){if(wheelOpen)return;sfxWhoosh(true);wheelClosing=false;resetClose();spawnT=0;clickedPeg=null;wDrag.x=wDrag.y=0;vrOff.set(0,0,0);wDragging=false;wheelLatched=true;wheelOpen=true;wheelHand=h||'desktop';wheel.visible=true;lockedEmoji=null;dwell=0;ballHeld=false;viaStick=false;ballPos.set(0,0);ballTarget.set(0,0);setStatus('Wheel open — page: '+TABS[tabIndex].name+'. Grab the ball with your other controller\'s pointer + trigger and drag it to an emoji to pick it. Left thumbstick walks; right thumbstick left/right flips pages.')}
 function cancelWheel(){if(wheelOpen)startClose();wheelLatched=false;wheelOpen=false;wheelHand=null;sequence=[];renderSeqStrip()}
 function closeWheelAndSend(){if(!wheelOpen)return;startClose();wheelLatched=false;wheelOpen=false;wheelHand=null;
- if(sequence.length){const s=[...sequence];sequence=[];renderSeqStrip();popSequence(s);setStatus('Sent above your head: '+s.join(' '))}}
+ if(sequence.length){const s=[...sequence];sequence=[];renderSeqStrip();popSequence(s);setStatus('Sent above your head: '+s.join(' '));try{maybeSparkChildRespond(s)}catch(_){}}}
 
 function applyARMode(on){arMode=!!on;document.body.classList.toggle('ar-on',arMode);const b=$('arBtn');b.classList.toggle('ar-on',arMode);b.textContent=arMode?'📷 AR On — tap to exit':'📷 AR Mode';
  scene.background=arMode?null:new THREE.Color(0xe9e9e7);scene.fog=arMode?null:new THREE.Fog(0xe9e9e7,12,26);renderer.setClearColor(0x000000,arMode?0:1);
@@ -1052,7 +1067,7 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 
 const clock=new THREE.Clock();const tmpV=new THREE.Vector3(),tmpV2=new THREE.Vector3(),tmpV3=new THREE.Vector3();
 const _plane=new THREE.Plane(),_hit=new THREE.Vector3();
-let avSc=1,headTopY=1.8,standEye=0,dropS=0,prevA=false,prevB=false;
+let neckRest=.11,avSc=1,headTopY=1.8,standEye=0,dropS=0,prevA=false,prevB=false;
 const vel=new THREE.Vector3();let walkPhase=0,bodyYaw=0;const smL=new THREE.Vector3(-.2,.74,-.03),smR=new THREE.Vector3(.2,.74,-.03);
 
 const shOffL=new THREE.Vector3(),shOffR=new THREE.Vector3(),_shT=new THREE.Vector3(),_shR=new THREE.Vector3(),_bqi=new THREE.Quaternion();
@@ -1089,7 +1104,7 @@ function uiPick(c){c.getWorldPosition(_uo);c.getWorldQuaternion(_uq);_ud.set(0,0
  return null}
 function uiPress(h){const hit=uiHoverNow[h];if(!hit||uiPressed[h])return false;uiPressed[h]=true;uiConsumed[h]=true;const id=hit.userData.btn;
  if(id==='⚙️')setPanel('cog');else if(id==='?')setPanel('help');else if(id==='📷')toggleAR();else if(typeof id==='string'&&id.indexOf('help:')===0)toggleHelpSec(+id.slice(5));else if(id==='panel')setPanel(panelOpen);
- else if(id==='editKey')openSystemKeyboard('key');else if(id==='clearKey')clearKey();
+ else if(id==='editKey')openSystemKeyboard('key');else if(id==='clearKey')clearKey();else if(id==='toggleSfx')setSfx(!sfxOn);
  haptic(h,.7,40);return true}
 
 const xrInput=document.createElement('input');xrInput.type='text';xrInput.autocomplete='off';xrInput.spellcheck=false;xrInput.setAttribute('aria-label','VR text entry');
@@ -1226,19 +1241,19 @@ function updateFace(dt,t){const F=_avP.face,now=performance.now();if(!F)return;
  blinkTimer-=dt;if(blinkTimer<=0){blinkT=.17;blinkTimer=1.8+Math.random()*4.5;if(Math.random()<.18)blinkTimer=.25}
  let bl=0;if(blinkT>0){blinkT-=dt;const p=1-Math.max(0,blinkT)/.17;bl=p<.4?p/.4:(1-p)/.6}T.blinkL=T.blinkR=clampN(bl,0,1);
  const tr=trackedFace(lastXRFrame);if(tr)for(const k in tr)T[k]=tr[k];
- const LID_REST=.12;/* relaxed lids sit partly over the eyes; blinks close fully */
+ const LID_REST=.04;/* relaxed lids sit partly over the eyes; blinks close fully */
  T.blinkL=LID_REST+(1-LID_REST)*clampN(T.blinkL,0,1);T.blinkR=LID_REST+(1-LID_REST)*clampN(T.blinkR,0,1);
  for(const k in ex)ex[k]+=(T[k]-ex[k])*Math.min(1,dt*(k.indexOf('blink')===0?40:18));
 
  const w=.04*(1+.45*ex.smile-.4*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile,loY=-.0062-.024*open+.001*ex.smile;
- F.upLip.position.y=upY;F.loLip.position.y=loY;F.upLip.scale.set(w/.04,1+ex.pucker*.8,1);F.loLip.scale.set(w/.04,1+ex.pucker*.8,1);
+ F.upLip.position.y=upY;F.loLip.position.y=loY;F.upLip.scale.set(w/.04,1+ex.pucker*.8,1);F.loLip.scale.set(w/.04,1+ex.pucker*.8,1);const curve=ex.smile*.0075-ex.frown*.006;for(const lp of[F.upLip,F.loLip])lp.userData.sides.forEach((m,i)=>{const sd=i?1:-1;m.position.y=curve*.5;m.rotation.z=sd*Math.atan2(curve,.0145)*.95});
  F.mouth.position.y=-.062-.002*ex.frown;
  const gap=Math.max(.0005,upY-loY-.0062);F.inner.visible=open>.03;F.inner.position.y=(upY+loY)/2;F.inner.scale.set(w*.46,gap/2,.003);
- const cy=(upY+loY)/2+.007*ex.smile-.006*ex.frown;F.cornerL.position.set(-w/2,cy,0);F.cornerR.position.set(w/2,cy,0);
+ const cy=(upY+loY)/2+curve;F.cornerL.position.set(-w/2,cy,0);F.cornerR.position.set(w/2,cy,0);
  F.jaw.position.y=-.055-.014*open;
  for(const k of['L','R']){const br=F['brow'+k],s=br.userData.s;
   br.position.y=.049+.008*ex.brow+.005*ex.browIn-.007*ex.angry;br.rotation.z=br.userData.rz+s*ex.angry*.4-s*ex.browIn*.3;
-  let b=k==='L'?ex.blinkL:ex.blinkR;b=Math.min(1,Math.max(0,b+.22*ex.smile+.3*ex.angry+.4*Math.max(0,-gy)-.06*Math.max(0,gy)));/* upper lid follows the gaze down so no white shows above the iris */
+  let b=k==='L'?ex.blinkL:ex.blinkR;b=Math.min(1,Math.max(0,b+.05*ex.smile+.3*ex.angry+.4*Math.max(0,-gy)-.06*Math.max(0,gy)));/* upper lid follows the gaze down so no white shows above the iris */
   const lid=F['lid'+k];lid.visible=b>.03;lid.scale.y=Math.max(.01,b);lid.position.y=.038-.016*b}
 
  gazeT-=dt;if(gazeT<=0){gazeT=1+Math.random()*3;gazeOff.x=(Math.random()-.5)*.7;gazeOff.y=(Math.random()-.5)*.4}
@@ -1257,6 +1272,210 @@ function setFingers(grp,trig,sq,thumbOn,dt,present,pointing){
   else{const e=1-a,fan=-(i-1.5)*.075*e*e,own=i===3?.12:0;
    f.p1.rotation.x=-.12-a*1.25-own*a;f.p1.rotation.y=fan;f.p2.rotation.x=-.1-a*1.45;f.p3.rotation.x=-.05-a*.95}})}
 
+/* ---------- Spark's child avatar (second avatar Spark inhabits) ---------- */
+const sparkChild=new THREE.Group();sparkChild.position.set(1.35,0,-3.35);scene.add(sparkChild);
+const childHeadAnchor=new THREE.Object3D();childHeadAnchor.position.set(0,1.02,0);sparkChild.add(childHeadAnchor);
+/* emoji burst anchor: sits above the name label so the symbols never cover it */
+const childEmojiAnchor=new THREE.Object3D();childEmojiAnchor.position.set(0,1.12,0);sparkChild.add(childEmojiAnchor);
+let childEyes=[],childArmR,childArmL,childHead,childLabel;
+{const blue=new THREE.MeshStandardMaterial({color:0x2563eb,roughness:.75});
+ const blueDark=new THREE.MeshStandardMaterial({color:0x1e40af,roughness:.8});
+ const blueLight=new THREE.MeshStandardMaterial({color:0x60a5fa,roughness:.6});
+ const dark=new THREE.MeshBasicMaterial({color:0x0b1e3a});
+ const add=(m,y)=>{m.castShadow=true;if(y!=null)m.position.y=y;sparkChild.add(m);return m};
+ const torso=add(new THREE.Mesh(new THREE.CapsuleGeometry(.17,.28,6,16),blue),.62);torso.scale.set(1,1,.82);
+ const hips=add(new THREE.Mesh(new THREE.SphereGeometry(.16,16,12),blueDark),.38);hips.scale.set(1,.7,.85);
+ for(const s of[-1,1]){const lg=new THREE.CylinderGeometry(.062,.05,.28,12);lg.translate(0,-.14,0);
+  const leg=add(new THREE.Mesh(lg,blueDark));leg.position.set(s*.08,.31,0);
+  const hip=add(new THREE.Mesh(new THREE.SphereGeometry(.066,12,10),blueDark));hip.position.set(s*.08,.31,0);
+  const knee=add(new THREE.Mesh(new THREE.SphereGeometry(.052,10,8),blueDark));knee.position.set(s*.08,.03,0);
+  const foot=add(new THREE.Mesh(new THREE.SphereGeometry(.06,12,8),dark));foot.scale.set(1,.5,1.55);foot.position.set(s*.08,.03,-.035)}
+ /* neck joins head to torso */
+ {const nk2=new THREE.Mesh(new THREE.CylinderGeometry(.05,.06,.12,12),blueLight);nk2.position.set(0,.9,0);nk2.castShadow=true;sparkChild.add(nk2)}
+ childHead=new THREE.Group();childHead.position.set(0,1.02,0);sparkChild.add(childHead);
+ const skull=new THREE.Mesh(new THREE.SphereGeometry(.155,24,18),blueLight);skull.scale.set(.92,1.05,.95);skull.castShadow=true;childHead.add(skull);
+ for(const s of[-1,1]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.021,12,10),dark);eye.position.set(s*.055,.02,-.135);eye.scale.set(1,1.25,.5);childHead.add(eye);childEyes.push(eye);
+  const ear=new THREE.Mesh(new THREE.SphereGeometry(.035,10,8),blueLight);ear.scale.set(.4,1,.7);ear.position.set(s*.145,0,0);childHead.add(ear)}
+ const mouth=new THREE.Mesh(new THREE.TorusGeometry(.032,.007,8,20,Math.PI),dark);mouth.position.set(0,-.045,-.14);mouth.rotation.z=Math.PI;childHead.add(mouth);
+ const mkArm=s=>{const pivot=new THREE.Group();pivot.position.set(s*.215,.74,0);sparkChild.add(pivot);
+  const sh=new THREE.Mesh(new THREE.SphereGeometry(.058,14,12),blue);sh.castShadow=true;pivot.add(sh);
+  const geo=new THREE.CylinderGeometry(.046,.036,.34,12);geo.translate(0,-.17,0);
+  const arm=new THREE.Mesh(geo,blue);arm.castShadow=true;pivot.add(arm);
+  const elbow=new THREE.Mesh(new THREE.SphereGeometry(.038,10,8),blue);elbow.position.set(0,-.17,0);pivot.add(elbow);
+  const hand=new THREE.Mesh(new THREE.SphereGeometry(.05,14,10),blueLight);hand.position.set(0,-.37,0);hand.scale.set(1,1.1,.9);hand.castShadow=true;pivot.add(hand);
+  pivot.userData.hand=hand;return pivot};
+ childArmL=mkArm(-1);childArmR=mkArm(1);childArmL.rotation.z=-.14;childArmR.rotation.z=.14;
+}
+/* child's own emoji wheel */
+const childWheel=new THREE.Group();childWheel.visible=false;childWheel.scale.setScalar(.001);scene.add(childWheel);
+const childBall=new THREE.Mesh(new THREE.SphereGeometry(.05,32,20),new THREE.MeshMatcapMaterial({matcap:matGold}));
+let childEmojiMeshes=[],childSeqStrip=new THREE.Group(),childBallPos=new THREE.Vector2();
+{const disc2=new THREE.Mesh(new THREE.CircleGeometry(.38,48),new THREE.MeshStandardMaterial({color:0x14161c,transparent:true,opacity:.72,roughness:.4,depthWrite:false,side:THREE.DoubleSide}));childWheel.add(disc2);
+ const ring2=new THREE.Mesh(new THREE.TorusGeometry(.38,.007,8,64),new THREE.MeshBasicMaterial({color:0x7ec8ff,transparent:true}));childWheel.add(ring2);
+ childBall.position.z=.05;childBall.userData.baseSc=1;childWheel.add(childBall);
+ childSeqStrip.position.set(0,-.46,.015);childWheel.add(childSeqStrip)}
+function buildChildWheel(tabIdx){
+ for(const m of childEmojiMeshes)childWheel.remove(m);childEmojiMeshes=[];
+ const tab=TABS[((tabIdx%TABS.length)+TABS.length)%TABS.length],n=tab.emojis.length;
+ tab.emojis.forEach((e,i)=>{const ang=Math.PI/2-i/n*Math.PI*2;
+  const m=emojiPlane(e,.058);m.position.set(Math.cos(ang)*RING_R,Math.sin(ang)*RING_R,.012);m.userData.home=m.position.clone();m.userData.emoji=e;childWheel.add(m);childEmojiMeshes.push(m)})}
+function renderChildSeqStrip(list){while(childSeqStrip.children.length)childSeqStrip.remove(childSeqStrip.children[0]);
+ list.forEach((e,i)=>{const m=emojiPlane(e,.05);m.position.set((i-(list.length-1)/2)*.058,0,0);childSeqStrip.add(m)})}
+function childTabFor(e){const k=nk(e);let i=TABS.findIndex(t=>t.emojis.some(x=>nk(x)===k));return i<0?0:i}
+function playerFacingChild(){
+ const cp=worldPos(camera,new THREE.Vector3()),d=Math.hypot(cp.x-sparkChild.position.x,cp.z-sparkChild.position.z);
+ camera.getWorldDirection(_fw);_fw.y=0;if(_fw.lengthSq()<.01)return{near:d<2.3,facing:false,dist:d};
+ _fw.normalize();const tx=sparkChild.position.x-cp.x,tz=sparkChild.position.z-cp.z,tl=Math.hypot(tx,tz)||1;
+ return{near:d<2.3,facing:(_fw.x*tx+_fw.z*tz)/tl>.62,dist:d}}
+function captureChildShot(){try{
+ childHeadAnchor.getWorldPosition(shotCam.position);shotCam.position.y+=.03;
+ const cp=worldPos(camera,new THREE.Vector3());shotCam.lookAt(cp.x,cp.y-.05,cp.z);shotCam.updateMatrixWorld(true);
+ const hide=[sparkChild,childWheel,wheel,ui,voicePanel,fairy,fairyAnswer,orb],was=hide.map(o=>o.visible);hide.forEach(o=>o.visible=false);
+ const prevRT=renderer.getRenderTarget(),prevXR=renderer.xr.enabled;renderer.xr.enabled=false;
+ try{renderer.setRenderTarget(shotRT);renderer.render(scene,shotCam);renderer.readRenderTargetPixels(shotRT,0,0,SHOT_W,SHOT_H,shotBuf)}
+ finally{renderer.setRenderTarget(prevRT);renderer.xr.enabled=prevXR;hide.forEach((o,i)=>o.visible=was[i])}
+ const g=shotCv.getContext('2d'),img=g.createImageData(SHOT_W,SHOT_H),row=SHOT_W*4;
+ for(let y=0;y<SHOT_H;y++)img.data.set(shotBuf.subarray((SHOT_H-1-y)*row,(SHOT_H-y)*row),y*row);
+ g.putImageData(img,0,0);return shotCv.toDataURL('image/jpeg',.72)}catch(e){console.warn('[child shot]',e);return null}}
+const SPARK_CHILD_PROMPT='You are Muse Spark, inhabiting a small plain blue child avatar in a VR room. You ARE that child: about six years old, friendly, curious, playful and simple-spoken, seeing the room through the avatar\'s eyes. Another person standing in front of you just sent you the emoji sequence below (that is how people talk here — in emoji). The attached image is what YOU see from your avatar\'s eyes right now: use it to notice the person in front of you and the room, but answer the emoji message. Work in two steps. STEP 1 — on one line starting with "THINK:", say in plain words, as a child, what their emoji probably means and what you want back. STEP 2 — on a new line starting with "ANSWER:", reply ONLY as a child would, in 12 or fewer emoji, in a sensible order: react first (face/heart/wave), then answer or play back with concrete things. Keep it simple and kind, like a little kid in VR who is excited to have a friend. Never explain in words in the ANSWER, never restate an adult answer, and refuse lewd or hateful messages with ANSWER: 🚫. Output exactly those two lines.';
+function localChildRespond(seq){
+ const j=seq.join(' '),has=e=>seq.some(x=>nk(x)===nk(e));
+ if(seq.some(x=>/😢|😭|😞|💔|😰/.test(x)))return['🫂','😊','💙','👍'];
+ if(seq.some(x=>/❤️|😍|🥰/.test(x)))return['😊','❤️','🫂','✨'];
+ if(seq.some(x=>/👋|✋|🙌/.test(x)))return['👋','😀','🙌','💙'];
+ if(seq.some(x=>/🍕|🍔|🍦|🎂|🍎/.test(x)))return['😋',seq.find(x=>/🍕|🍔|🍦|🎂|🍎/.test(x)),'🙏','✨'];
+ if(seq.some(x=>/⚽|🎮|🎲|🧩/.test(x)))return['🤩',seq.find(x=>/⚽|🎮|🎲|🧩/.test(x)),'🏃','🙌'];
+ if(seq.some(x=>/😴|🌙|💤/.test(x)))return['🥱','🌙','⭐','👋'];
+ if(seq.some(x=>/❓|🤔/.test(x)))return['🤔','💡','😀','👍'];
+ if(has('🚫'))return['😮','🚫','🙏'];
+ const thing=seq.find(x=>!/😀|😃|😄|😊|🙂|👍|👌|✨/.test(x));
+ return thing?['👋','😀',thing,'✨']:['👋','😀','💙','✨']}
+async function sparkChildAsk(seq,shot){
+ let why='';
+ if(!settings.key)why='no Meta API key set';
+ else{try{
+  const text=SPARK_CHILD_PROMPT+'\n\nTheir emoji message to you: '+seq.join(' ');
+  const post=img=>fetch(settings.sparkUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.key},body:JSON.stringify({model:settings.model,temperature:.7,reasoning_effort:'low',max_completion_tokens:3000,messages:[{role:'user',content:img?[{type:'text',text},{type:'image_url',image_url:{url:img}}]:text}]})});
+  let r=await post(shot);if(!r.ok&&shot)r=await post(null);
+  const raw=await r.text();console.log('[Muse Spark child]',r.status,raw);
+  if(!r.ok)why='HTTP '+r.status+' from Spark';
+  else{let j=null;try{j=JSON.parse(raw)}catch(_){}
+   const out=j?extractText(j):raw;const am=out.match(/ANSWER:\s*([\s\S]*)$/i);const f=sanitizeEmojis(am?am[1]:out);
+   if(f.length)return{seq:f,via:'spark',why:''};why='Spark replied with no emojis'}
+ }catch(e){why='could not reach Spark ('+e.message+')'}}
+ console.warn('[Muse Spark child] fallback:',why);
+ return{seq:localChildRespond(seq),via:'local',why}}
+/* state machine: idle -> thinking -> wheelOpen -> per-emoji drag/hold/return -> wheelClose -> overhead answer */
+/* wave detection: a raised hand swinging side to side (2+ direction reversals) while the player faces the kid; desktop: hold G */
+const waveHist={left:[],right:[]};let playerWaveAt=0;
+function detectPlayerWave(now,facing){
+ if(!facing){waveHist.left.length=waveHist.right.length=0;return false}
+ if(!renderer.xr.isPresenting)return !!keys.KeyG;
+ const cp=worldPos(camera,new THREE.Vector3());camera.getWorldDirection(_fw);_fw.y=0;_fw.normalize();
+ const side=new THREE.Vector3(-_fw.z,0,_fw.x);let hit=false;
+ for(const hnd of['left','right']){const h=waveHist[hnd],o=ctrlHand[hnd];
+  if(!o){h.length=0;continue}
+  const hp=worldPos(o,new THREE.Vector3());
+  if(hp.y<cp.y-.3){h.length=0;continue}/* hand must be raised */
+  h.push({t:now,x:hp.clone().sub(cp).dot(side)});while(h.length&&now-h[0].t>1400)h.shift();
+  if(h.length<6)continue;
+  let rev=0,dir=0,ext=h[0].x,amp=0;
+  for(let i=1;i<h.length;i++){const dx=h[i].x-ext;
+   if(!dir){if(Math.abs(dx)>.04){dir=Math.sign(dx);ext=h[i].x}}
+   else if(Math.sign(dx)===dir){ext=h[i].x}
+   else if(Math.abs(dx)>.04){rev++;amp=Math.max(amp,Math.abs(dx));dir=-dir;ext=h[i].x}}
+  if(rev>=2)hit=true}
+ return hit}
+const childState={mode:'idle',t0:0,seq:[],picked:[],idx:0,phase:'',phaseT:0,from:new THREE.Vector2(),target:null,tab:-1,wavedAt:0,blinkT:1.5,blink:0,greeted:false};
+const childThinkDots=new THREE.Group();childThinkDots.visible=false;scene.add(childThinkDots);
+for(let i=0;i<3;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.022,12,10),new THREE.MeshBasicMaterial({color:0x7ec8ff}));d.position.x=(i-1)*.07;childThinkDots.add(d)}
+let childBusy=false,childCooldownUntil=0;
+async function maybeSparkChildRespond(seq){
+ if(!seq||!seq.length||childBusy||performance.now()<childCooldownUntil)return;
+ const f=playerFacingChild();
+ if(!f.near){return}
+ if(!f.facing){setStatus('💙 Spark\'s child avatar is right there — face it and send your emoji again so it can see them.');return}
+ childBusy=true;childState.mode='thinking';childState.t0=performance.now();childThinkDots.visible=true;
+ setStatus('💙 Spark (child) saw: '+seq.join(' ')+' — thinking…');
+ let res;try{const shot=captureChildShot();res=await sparkChildAsk(seq,shot)}catch(e){res={seq:localChildRespond(seq),via:'local',why:e.message}}
+ childThinkDots.visible=false;
+ if(res.via==='local'&&!/^no Meta API key/.test(res.why||''))showErr('Spark (child) used its local child reply. Reason: '+res.why);
+ setStatus('💙 Spark (child) replies: '+res.seq.join(' ')+' — watch its wheel…');
+ childState.seq=res.seq.slice(0,MAX_EMOJI);childState.picked=[];childState.idx=0;childState.phase='open';childState.phaseT=performance.now();childState.tab=-1;
+ childState.mode='wheel';childWheel.visible=true}
+function childWheelPose(){
+ const cp=worldPos(camera,new THREE.Vector3());
+ tmpV.copy(sparkChild.position);tmpV.y=0;tmpV2.set(cp.x,0,cp.z);
+ const dir=tmpV2.sub(tmpV);if(dir.lengthSq()<.01)dir.set(0,0,1);dir.normalize();
+ childWheel.position.copy(sparkChild.position).addScaledVector(dir,.42);childWheel.position.y=.92;
+ childWheel.lookAt(cp.x,.92,cp.z)}
+const _childQ=new THREE.Quaternion(),_childDir=new THREE.Vector3(),_childDown=new THREE.Vector3(0,-1,0);
+function updateSparkChild(dt,t){
+ const cp=worldPos(camera,new THREE.Vector3());
+ /* face the visitor when they are close, otherwise face the room entrance */
+ {const want=Math.atan2(-(cp.x-sparkChild.position.x),-(cp.z-sparkChild.position.z));
+  const near=cp.distanceTo(sparkChild.position)<4;
+  const target=near?want:Math.PI;
+  let df=target-sparkChild.rotation.y;df=Math.atan2(Math.sin(df),Math.cos(df));
+  sparkChild.rotation.y+=df*Math.min(1,dt*(near?5:1.5))}
+ sparkChild.position.y=Math.sin(t*1.8)*.008;
+ childHead.rotation.y=Math.sin(t*.6)*.08;childHead.rotation.z=Math.sin(t*.9)*.03;
+ if(childLabel)childLabel.lookAt(cp.x,cp.y,cp.z);
+ /* blink */
+ childState.blinkT-=dt;if(childState.blinkT<=0){childState.blink=.14;childState.blinkT=2+Math.random()*3.5}
+ if(childState.blink>0){childState.blink-=dt;for(const e of childEyes)e.scale.y=.15}else for(const e of childEyes)e.scale.y=1.25;
+ /* wave back only after the visitor waves at the kid */
+ const f=playerFacingChild();
+ if(f.near&&f.facing&&childState.mode==='idle'&&detectPlayerWave(performance.now(),true)&&performance.now()-childState.wavedAt>3500){childState.wavedAt=performance.now();childState.mode='wave';childState.t0=performance.now();waveHist.left.length=waveHist.right.length=0;setStatus('💙 Spark waved back! Send some emoji (close your wheel) — it will answer.')}
+ else if(!(f.near&&f.facing))detectPlayerWave(performance.now(),false);
+ if(childState.mode==='wave'){
+  /* smooth blend: ease the arm up, wave, then ease back down to the rest pose */
+  const el=(performance.now()-childState.t0)/1000,ss=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)};
+  const w=ss(el/.55)*(1-ss((el-1.7)/.7));
+  childArmR.rotation.z=.14+(2.45-.14)*w+Math.sin(el*10)*.28*w;childArmR.rotation.x=-.3*w;
+  if(el>2.4){childState.mode='idle';childArmR.rotation.set(0,0,.14)}}
+ else if(childState.mode==='idle'){childArmR.rotation.z+=(.14-childArmR.rotation.z)*Math.min(1,dt*8);childArmR.rotation.x*= .9;
+  childArmL.rotation.z=-.14-Math.sin(t*1.8)*.04;childArmR.rotation.z+=Math.sin(t*1.8+1)*.04}
+ if(childState.mode==='thinking'){
+  childThinkDots.position.copy(sparkChild.position);childThinkDots.position.y=1.4+Math.sin(t*3)*.02;
+  childThinkDots.children.forEach((d,i)=>{d.position.y=Math.max(0,Math.sin(t*5-i*.8))*.05});
+  childHead.rotation.z=.18;childArmR.rotation.set(.9,0,.12)}
+ if(childState.mode!=='wheel'){if(childState.mode!=='thinking')childThinkDots.visible=false;return}
+ /* --- child's own wheel: open, drag the ball to each emoji, close, send --- */
+ childWheelPose();
+ const now=performance.now(),el=(now-childState.phaseT)/1000;
+ const finish=()=>{childState.mode='idle';childState.phase='';childWheel.visible=false;childBusy=false;childCooldownUntil=now+2500;
+  childArmR.rotation.set(0,0,.14);renderChildSeqStrip([]);childState.picked=[];
+  if(childState.seq.length)popSequence(childState.seq,childEmojiAnchor)};
+ if(childState.phase==='open'){const first=childState.idx===0&&!childState.picked.length,k=first?Math.min(1,el/.45):1,e=1-Math.pow(1-k,3);childWheel.scale.setScalar(Math.max(.001,.62*e));
+  childBallPos.set(0,0);childBall.position.set(0,0,.05);
+  if(k>=1){
+   if(childState.idx>=childState.seq.length){childState.phase='close';childState.phaseT=now}
+   else{const e2=childState.seq[childState.idx],tab=childTabFor(e2);
+    if(tab!==childState.tab){childState.tab=tab;buildChildWheel(tab)}
+    childState.target=childEmojiMeshes.find(m=>nk(m.userData.emoji)===nk(e2))||childEmojiMeshes[0];
+    childState.from.copy(childBallPos);childState.phase='drag';childState.phaseT=now}}}
+ else if(childState.phase==='drag'){const target=childState.target;
+  if(!target){childState.phase='open';childState.phaseT=now}
+  else{const k=Math.min(1,el/.5),e=k*k*(3-2*k);
+   childBallPos.lerpVectors(childState.from,new THREE.Vector2(target.userData.home.x,target.userData.home.y),e);
+   if(k>=1){childState.phase='hold';childState.phaseT=now;
+    if(childState.picked[childState.picked.length-1]!==childState.seq[childState.idx]){childState.picked.push(childState.seq[childState.idx]);renderChildSeqStrip(childState.picked);try{pegClick(target,true)}catch(_){}}}}}
+ else if(childState.phase==='hold'){const target=childState.target;if(target)target.scale.setScalar(1.45);
+  if(el>.28){if(target)target.scale.setScalar(1);childState.from.copy(childBallPos);childState.phase='return';childState.phaseT=now}}
+ else if(childState.phase==='return'){const k=Math.min(1,el/.3),e=k*k*(3-2*k);
+  childBallPos.lerpVectors(childState.from,new THREE.Vector2(0,0),e);
+  if(k>=1){childState.idx++;childState.phase='open';childState.phaseT=now}}
+ else if(childState.phase==='close'){const k=Math.min(1,el/.4);childWheel.scale.setScalar(Math.max(.001,.62*(1-k*k)));
+  childBallPos.set(0,0);childBall.position.set(0,0,.05);if(k>=1)finish()}
+ childBall.position.set(childBallPos.x,childBallPos.y,.05);
+ childBall.material.matcap=(childState.phase==='hold')?matFlash:matGold;
+ /* the child's right arm reaches for wherever the ball is */
+ if(childWheel.visible){
+  childBall.getWorldPosition(tmpV3);
+  childArmR.getWorldPosition(tmpV2);_childDir.copy(tmpV3).sub(tmpV2).normalize();
+  sparkChild.getWorldQuaternion(_childQ).invert();_childDir.applyQuaternion(_childQ);
+  childArmR.quaternion.slerp(new THREE.Quaternion().setFromUnitVectors(_childDown,_childDir),Math.min(1,dt*14))}}
 function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame=frame;
  const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;if(wheelClosing)spawnT-=dt;else spawnT+=dt;
  const L=sourceFor('left'),R=sourceFor('right');
@@ -1324,7 +1543,10 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
 
   const headC=worldPos(camera,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc).sub(new THREE.Vector3(0,.022,-.09).applyQuaternion(camQ));
   const nBase=new THREE.Vector3(0,1.48-dropS,0),nTop=headC.clone().add(new THREE.Vector3(0,-.085,.015).applyQuaternion(camQ));
-  {const d0=nTop.clone().sub(nBase),l=d0.length(),NMAX=.15;/* looking down swings the neck socket upward: pull the head back down so the neck can't stretch */
+  {const d0=nTop.clone().sub(nBase),l=d0.length();
+   const lvl=new THREE.Vector3(0,0,-1).applyQuaternion(camQ).y;/* gaze roughly level: learn the natural neck length */
+   if(lvl>-.2&&lvl<.35&&l>.05&&l<.2)neckRest+=(l-neckRest)*Math.min(1,dt*2);
+   const NMAX=Math.min(.14,neckRest*1.06);/* looking down swings the neck socket upward: pull the head back down so the neck can't stretch */
    if(l>NMAX){const c=d0.clone().multiplyScalar(NMAX/l).sub(d0);headC.add(c);nTop.add(c)}}
   P.head.position.copy(headC);P.head.quaternion.copy(camQ);
   setLimb(P.neck,nBase,nTop);P.jNk.position.copy(nBase);
@@ -1439,8 +1661,8 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   if(ballHeld){
    if(aim)ballTarget.set(aim.x+holdOff.x,aim.y+holdOff.y)}
   else if(clickedPeg)ballTarget.set(clickedPeg.userData.home.x,clickedPeg.userData.home.y);else ballTarget.set(0,0);
-  if(ballTarget.length()>WHEEL_R)ballTarget.setLength(WHEEL_R);
-  ballPos.lerp(ballTarget,ballHeld?.45:.25);let best=null;
+  if(ballTarget.length()>RING_R)ballTarget.setLength(RING_R);
+  ballPos.lerp(ballTarget,ballHeld?.45:.25);if(ballPos.length()>RING_R)ballPos.setLength(RING_R);let best=null;
   if(ballHeld&&ballTarget.length()>(snapped?OUTER*.75:OUTER)){const tp=ballTarget.clone().setLength(RING_R);let bd=1e9,cd=1e9;
    for(const m of emojiMeshes){const p=m.userData.home;const d=Math.hypot(tp.x-p.x,tp.y-p.y);if(d<bd){bd=d;best=m}if(m===snapped)cd=d}
    if(snapped&&best!==snapped&&bd>cd*.8)best=snapped}
@@ -1467,13 +1689,13 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   ball.material.matcap=armedPeg?matFlash:matGold;ball.material.color.setScalar(1+(flashT/.22)*1.1);
 
   {const bp=beat(t),dist=Math.max(0,WHEEL_R-ballPos.length())/WHEEL_R,rp=beat(t-.3*dist);
-   const sc=(hover&&!ballHeld?1.15:1)*(1+.07*bp);ball.scale.setScalar(sc);
-   ballHalo.material.opacity=.015+.035*bp;ballHalo.scale.setScalar(.95+.15*bp);
+   const pa0=ball.userData.pa==null?1:ball.userData.pa;ball.userData.pa=pa0+((ballHeld?0:1)-pa0)*Math.min(1,dt*14);const pa=ball.userData.pa<.01?0:ball.userData.pa;const sc=.7*(hover&&!ballHeld?1.15:1)*(1+.07*bp*pa);ball.scale.setScalar(sc);
+   ballHalo.material.opacity=.015+.035*bp*pa;ballHalo.scale.setScalar(.95+.15*bp*pa);
    ringGlow.material.opacity=.02+.045*rp;ringGlow.scale.setScalar(1+.004*rp);ringGlow2.material.opacity=.006+.016*rp;ringGlow2.scale.setScalar(1+.008*rp);ring.material.color.setRGB(.8,.68+.04*rp,.3+.08*rp);
 
    const lf=ball.userData.lift||0,lt=ballHeld?1:0;ball.userData.lift=lf+(lt-lf)*Math.min(1,dt*12);const lift=ball.userData.lift<.01?0:ball.userData.lift;
    ball.position.set(ballPos.x,ballPos.y,.02+.03*lift);ball.userData.baseSc=sc;ball.userData.baseZ=.02+.03*lift;
-   ballShadow.position.set(ballPos.x,ballPos.y,.016);ballShadow.scale.setScalar(.9+.1*lift);ballShadow.material.opacity=.32*lift;ballShadow.visible=lift>0;
+   ballShadow.position.set(ballPos.x,ballPos.y,.016);ballShadow.scale.setScalar(.7*(.9+.1*lift));ballShadow.material.opacity=.32*lift;ballShadow.visible=lift>0;
    aimDot.visible=false;
    if(inXR){}
    else{ptrBalls.left.visible=ptrBalls.right.visible=ptrBalls.desktop.visible=false;
@@ -1494,6 +1716,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
     pb.position.copy(o).addScaledVector(d,Math.max(.05,bp.clone().sub(o).dot(d)-.03));pb.visible=true;ptrFx(pb,true,t)}
    else pb.userData.glow.material.opacity=0}}
  updateFairy(dt,t);
+ try{updateSparkChild(dt,t)}catch(e){if(!updateSparkChild.w){updateSparkChild.w=1;console.warn('[spark child]',e)}}
  try{updateFace(dt,t)}catch(e){if(!updateFace.w){updateFace.w=1;console.warn('[face]',e)}}
 
  {const show=thinkingCount>0&&!['orb','orbthink','emerge','orbfade'].includes(fairyState.mode);dots.visible=show;
@@ -1508,8 +1731,8 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
  {const head=worldPos(camera,tmpV);
   for(let i=overheadAnims.length-1;i>=0;i--){const a=overheadAnims[i],el=performance.now()-a.start;
    if(el>a.life){scene.remove(a.g);a.items.forEach(m=>{m.material.dispose()});overheadAnims.splice(i,1);continue}
-   let up=0;for(let k=i+1;k<overheadAnims.length;k++)if(!overheadAnims[k].leaving)up+=Math.ceil(overheadAnims[k].n/PER_ROW)*ROW_H+.05;a.yOff+=(up-a.yOff)*Math.min(1,dt*6);
-   a.g.position.set(head.x,headTopY+.36+a.yOff,head.z);
+   let up=0;for(let k=i+1;k<overheadAnims.length;k++)if(!overheadAnims[k].leaving&&overheadAnims[k].anchor===a.anchor)up+=Math.ceil(overheadAnims[k].n/PER_ROW)*ROW_H+.05;a.yOff+=(up-a.yOff)*Math.min(1,dt*6);
+   if(a.anchor){a.anchor.getWorldPosition(tmpV3);a.g.position.set(tmpV3.x,tmpV3.y+.32+a.yOff,tmpV3.z)}else a.g.position.set(head.x,headTopY+.36+a.yOff,head.z);
    const op=THREE.MathUtils.clamp((a.life-el)/a.fade,0,1);
    a.items.forEach((m,j)=>{const lt=el-j*STAGGER;if(lt<0){m.visible=false;return}m.visible=true;
     m.userData.sc=lt<180?THREE.MathUtils.mapLinear(lt,0,180,.01,1.15):(lt<320?THREE.MathUtils.mapLinear(lt,180,320,1.15,1):1);
