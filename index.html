@@ -179,7 +179,7 @@ const rig=new THREE.Group();rig.position.set(0,0,-1.9);scene.add(rig);rig.add(ca
 scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,.75));
 
 for(const x of[-2.5,2.5]){const sp=new THREE.SpotLight(0xffffff,1.1,0,Math.PI/2.6,.7,0);sp.position.set(x,3.9,0);sp.target.position.set(x*.6,0,0);scene.add(sp,sp.target);
- sp.castShadow=true;sp.shadow.mapSize.set(2048,2048);sp.shadow.camera.near=.5;sp.shadow.camera.far=8;sp.shadow.bias=-.0004;sp.shadow.normalBias=.02;sp.shadow.radius=4}
+ sp.castShadow=true;sp.shadow.mapSize.set(1024,1024);sp.shadow.camera.near=.5;sp.shadow.camera.far=8;sp.shadow.bias=-.0004;sp.shadow.normalBias=.02;sp.shadow.radius=4}
 const pmrem=new THREE.PMREMGenerator(renderer);
 
 {
@@ -191,7 +191,7 @@ const pmrem=new THREE.PMREMGenerator(renderer);
  for(const x of[-2.5,2.5]){const p=new THREE.Mesh(new THREE.BoxGeometry(2,.06,.7),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.4}));p.position.set(x,3.95,0);scene.add(p);arHide.push(p)}
 }
 
-const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1536,textureHeight:1536,color:0xcfd8dc});
+const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1024,textureHeight:1024,color:0xcfd8dc});
 mirror.position.set(0,1.55,-4.94);scene.add(mirror);arHide.push(mirror);
 
 let inMirror=false;
@@ -1053,7 +1053,7 @@ async function enterXR(kind){startLipSync();if(!navigator.xr){
   const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
   let gotCam=false;if(mode==='immersive-ar')gotCam=await startSnapCam();
   const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access','face-tracking','eye-tracking']});
-  renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0);
+  renderer.xr.setFramebufferScaleFactor(1.0);renderer.xr.setFoveation(0);
   xrSessionMode=mode;session.addEventListener('end',()=>{xrSessionMode=null;applyARMode(false);stopSnapCam();$('vrBtn').textContent='Enter VR'});
   await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message+(kind==='ar'&&arSnapStream?' — camera was just allowed; tap 📷 AR Mode once more.':''));return false}}
 let xrSwitching=false,xrSessionMode=null;
