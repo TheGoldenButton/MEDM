@@ -295,6 +295,10 @@ function makeHuman(){
  }
  const mg=new THREE.Group();mg.position.set(0,-.062,-.099);head.add(mg);F.mouth=mg;F.jaw=jaw;
  const inner=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),new THREE.MeshStandardMaterial({color:0x3a1a1c,roughness:.8}));inner.visible=false;inner.position.z=.002;mg.add(inner);F.inner=inner;
+ const toothM=new THREE.MeshStandardMaterial({color:0xf3eee4,roughness:.5}),tongueM=new THREE.MeshStandardMaterial({color:0xc4666c,roughness:.7});
+ {const tu=new THREE.Mesh(new THREE.BoxGeometry(.03,.0045,.004),toothM);tu.position.z=-.0005;tu.visible=false;mg.add(tu);F.teethU=tu;
+  const tl=new THREE.Mesh(new THREE.BoxGeometry(.03,.0035,.004),toothM);tl.position.z=-.0005;tl.visible=false;mg.add(tl);F.teethL=tl;
+  const tn=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),tongueM);tn.position.z=.0012;tn.visible=false;mg.add(tn);F.tongue=tn}
  const mkLip=h=>{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.BoxGeometry(.017,h,.008),lipMat));g.userData.sides=[-1,1].map(sd=>{const m=new THREE.Mesh(new THREE.BoxGeometry(.0125,h,.008),lipMat);m.position.x=sd*.0145;g.add(m);return m});return g};const upLip=mkLip(.0062);mg.add(upLip);F.upLip=upLip;
  const loLip=mkLip(.0075);loLip.position.y=-.0062;mg.add(loLip);F.loLip=loLip;
  for(const k of['L','R']){const c=new THREE.Mesh(new THREE.SphereGeometry(.0065,8,6),lipMat);mg.add(c);F['corner'+k]=c}
@@ -1266,7 +1270,7 @@ function deskPoint(sh){
  _ptQ.setFromUnitVectors(_negZ,_aimLoc);
  return true}
 /* ---------- face / expression system ---------- */
-const ex={jaw:0,smile:0,frown:0,pucker:0,blinkL:0,blinkR:0,brow:0,browIn:0,angry:0,cheek:0};
+const ex={jaw:0,smile:0,frown:0,pucker:0,blinkL:0,blinkR:0,brow:0,browIn:0,angry:0,cheek:0,wide:0,teeth:0,press:0};
 const emote={until:0,dur:1,jaw:0,smile:0,frown:0,brow:0,angry:0};
 const EM_SMILE=['😀','😂','😍','😎','🥰','😊','🙂','😁','🤣','😄','😃','😆','🥳','😉','😋','🤩','❤','👍','🎉','🙌','👏','😇'];
 const EM_SAD=['😢','😭','😞','😔','🥺','😟','😥','😓','💔','😰'];
@@ -1279,7 +1283,7 @@ function triggerEmote(list){const c={smile:0,sad:0,angry:0,surp:0};
  if(top[0]==='smile'){emote.smile=1;emote.brow=.3}else if(top[0]==='sad'){emote.frown=1;emote.brow=.2}else if(top[0]==='angry'){emote.angry=1;emote.frown=.5}else{emote.jaw=.7;emote.brow=1}
  emote.dur=3800;emote.until=performance.now()+emote.dur}
 
-const lip={ctx:null,an:null,td:null,fd:null,stream:null,tried:false,jaw:0,hiR:.3,smile:0,pucker:0};
+const lip={ctx:null,an:null,td:null,fd:null,stream:null,tried:false,jaw:0,hiR:.3,smile:0,pucker:0,peak:.05,fMean:.55,oMean:.55,wide:0,teeth:0,press:0,emph:0,speakT:0,prevLvl:0};
 const lipEnabled=()=>{try{return localStorage.getItem('lipSync')!=='0'}catch(_){return true}};
 async function startLipSync(){if(lip.an||lip.tried||!lipEnabled()||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;lip.tried=true;
  try{const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false}});
@@ -1287,15 +1291,31 @@ async function startLipSync(){if(lip.an||lip.tried||!lipEnabled()||!navigator.me
   const an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=.4;ctx.createMediaStreamSource(st).connect(an);
   lip.ctx=ctx;lip.an=an;lip.stream=st;lip.td=new Float32Array(an.fftSize);lip.fd=new Uint8Array(an.frequencyBinCount);setStatus('🎤 Lip-sync on — your avatar\'s mouth follows your voice.')}
  catch(e){console.warn('[lipsync]',e);setStatus('Lip-sync unavailable (microphone not allowed): '+e.message)}}
-function stopLipSync(){if(lip.stream)lip.stream.getTracks().forEach(t=>t.stop());try{lip.ctx&&lip.ctx.close()}catch(_){}lip.ctx=lip.an=lip.stream=null;lip.jaw=lip.smile=lip.pucker=0}
+function stopLipSync(){if(lip.stream)lip.stream.getTracks().forEach(t=>t.stop());try{lip.ctx&&lip.ctx.close()}catch(_){}lip.ctx=lip.an=lip.stream=null;lip.jaw=lip.smile=lip.pucker=lip.wide=lip.teeth=lip.press=lip.emph=0}
 const clampN=(x,a,b)=>Math.min(b,Math.max(a,x));
 function sampleLip(dt){if(!lip.an)return;lip.an.getFloatTimeDomainData(lip.td);let sum=0;for(let i=0;i<lip.td.length;i++)sum+=lip.td[i]*lip.td[i];const rms=Math.sqrt(sum/lip.td.length);
- lip.an.getByteFrequencyData(lip.fd);const bh=lip.ctx.sampleRate/lip.an.fftSize;let lo=0,nl=0,hi=0,nh=0;
- for(let i=Math.floor(200/bh);i<=Math.floor(900/bh);i++){lo+=lip.fd[i];nl++}for(let i=Math.floor(2500/bh);i<=Math.floor(6000/bh)&&i<lip.fd.length;i++){hi+=lip.fd[i];nh++}
- lo/=Math.max(1,nl);hi/=Math.max(1,nh);const tgt=clampN((rms-.01)*15,0,1);
- lip.jaw+=(tgt-lip.jaw)*Math.min(1,dt*(tgt>lip.jaw?32:11));
- lip.hiR+=(hi/(lo+hi+1)-lip.hiR)*Math.min(1,dt*10);
- lip.smile=clampN((lip.hiR-.22)*4,0,1)*lip.jaw;lip.pucker=clampN((.14-lip.hiR)*7,0,1)*lip.jaw}
+ lip.an.getByteFrequencyData(lip.fd);const bh=lip.ctx.sampleRate/lip.an.fftSize;
+ const band=(a,b)=>{let t=0,n=0;for(let i=Math.max(1,Math.floor(a/bh));i<=Math.floor(b/bh)&&i<lip.fd.length;i++){t+=lip.fd[i];n++}return n?t/n:0};
+ const b1=band(250,800),b2=band(800,2200),b3=band(2200,4000),b4=band(4000,8000),tot=b1+b2+b3+b4+1;
+ /* adaptive loudness: the mouth scales to your own speaking level, so quiet and loud mics both look right */
+ lip.peak=Math.max(.04,rms,lip.peak*Math.exp(-dt*.25));const gate=Math.max(.008,lip.peak*.08);
+ const lvl=Math.pow(clampN((rms-gate)/(lip.peak-gate+1e-4),0,1),.7);
+ /* rough vowel / consonant classes from the spectrum: F1 share = how open the vowel is, F2+F3 share = front (ee) vs back (oo), 4-8k = s/f/sh */
+ const osh=b1/(b1+b2+1),fsh=(b2+b3)/(b1+b2+b3+1);
+ if(lvl>.2){const r=Math.min(1,dt*.4);lip.oMean+=(osh-lip.oMean)*r;lip.fMean+=(fsh-lip.fMean)*r}
+ const open=clampN(.5+(osh-lip.oMean)*5,0,1),front=clampN((fsh-lip.fMean)*7,-1,1);
+ const voiced=clampN(lvl*2.2,0,1),fric=clampN((b4/tot-.15)*6,0,1)*clampN(lvl*2.5,0,1);
+ let jawT=lvl*(.3+.7*open);jawT=jawT*(1-.7*fric)+.09*fric;
+ const wideT=clampN(Math.max(0,front)+.55*fric,0,1)*voiced*(1-.35*open),roundT=clampN(Math.max(0,-front),0,1)*voiced*(1-fric)*(1-.3*open);
+ const teethT=clampN(wideT*.9+fric+open*lvl*.45,0,1);
+ /* mouth shuts between syllables and on b/p/m: remember we're mid-speech, and firm the lips whenever the jaw closes */
+ if(lvl>.12)lip.speakT=.35;else lip.speakT=Math.max(0,lip.speakT-dt);
+ const pressT=lip.speakT>0&&jawT<.07?1:0;
+ /* emphasis: a sudden loud syllable lifts the brows */
+ const onset=lvl-lip.prevLvl;lip.prevLvl=lvl;lip.emph=Math.max(lip.emph*Math.exp(-dt*4.5),clampN(onset*5,0,1));
+ const sm=(v,t,up,dn)=>v+(t-v)*Math.min(1,dt*(t>v?up:dn));
+ lip.jaw=sm(lip.jaw,jawT,36,13);lip.wide=sm(lip.wide,wideT,16,9);lip.pucker=sm(lip.pucker,roundT,16,9);lip.teeth=sm(lip.teeth,teethT,22,14);lip.press=sm(lip.press,pressT,40,18);
+ lip.smile=lip.speakT>0?.1:0;lip.hiR=fsh}
 
 /* WebXR face tracking adapter: accepts ARKit-style or OpenXR-style expression names from whatever shape the browser exposes */
 function trackedFace(frame){
@@ -1318,7 +1338,7 @@ function trackedFace(frame){
 let idleT=1.5,idleOn=false,idleS=0;let deskPointing=false,blinkTimer=2,blinkT=0,gazeT=0,gx=0,gy=0;const gazeOff={x:0,y:0},_gv=new THREE.Vector3();
 function updateFace(dt,t){const F=_avP.face,now=performance.now();if(!F)return;
  sampleLip(dt);
- const T={jaw:lip.jaw,smile:lip.smile*.8+.06,frown:0,pucker:lip.pucker,blinkL:0,blinkR:0,brow:lip.jaw*.12,browIn:0,angry:0,cheek:0};
+ const T={jaw:lip.jaw,smile:lip.smile+.06,frown:0,pucker:lip.pucker,blinkL:0,blinkR:0,brow:lip.jaw*.12+lip.emph*.45,browIn:0,angry:0,cheek:0,wide:lip.wide,teeth:lip.teeth,press:lip.press};
  const eo=now<emote.until?Math.min(1,(emote.until-now)/600,(emote.dur-(emote.until-now))/150+.2):0;
  if(eo>0){T.smile=Math.max(T.smile,emote.smile*eo);T.frown=Math.max(T.frown,emote.frown*eo);T.jaw=Math.max(T.jaw,emote.jaw*eo);T.brow=Math.max(T.brow,emote.brow*eo);T.angry=Math.max(T.angry,emote.angry*eo);T.browIn=Math.max(T.browIn,emote.frown*eo*.8)}
  /* idle life: drift between a neutral face and a gentle smile every few seconds */
@@ -1326,16 +1346,19 @@ function updateFace(dt,t){const F=_avP.face,now=performance.now();if(!F)return;
  idleS+=((idleOn?.22:0)-idleS)*Math.min(1,dt*1.6);T.smile=Math.max(T.smile,idleS);
  blinkTimer-=dt;if(blinkTimer<=0){blinkT=.17;blinkTimer=1.8+Math.random()*4.5;if(Math.random()<.18)blinkTimer=.25}
  let bl=0;if(blinkT>0){blinkT-=dt;const p=1-Math.max(0,blinkT)/.17;bl=p<.4?p/.4:(1-p)/.6}T.blinkL=T.blinkR=clampN(bl,0,1);
- const tr=trackedFace(lastXRFrame);if(tr)for(const k in tr)T[k]=tr[k];
+ const tr=trackedFace(lastXRFrame);if(tr){for(const k in tr)T[k]=tr[k];if('jaw' in tr){T.wide=0;T.press=0;T.teeth=tr.jaw>.12?.5:0}}
  const LID_REST=.04;/* relaxed lids sit partly over the eyes; blinks close fully */
  T.blinkL=LID_REST+(1-LID_REST)*clampN(T.blinkL,0,1);T.blinkR=LID_REST+(1-LID_REST)*clampN(T.blinkR,0,1);
  for(const k in ex)ex[k]+=(T[k]-ex[k])*Math.min(1,dt*(k.indexOf('blink')===0?40:18));
 
- const w=.04*(1+.45*ex.smile-.4*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile,loY=-.0062-.024*open+.001*ex.smile;
- F.upLip.position.y=upY;F.loLip.position.y=loY;F.upLip.scale.set(w/.04,1+ex.pucker*.8,1);F.loLip.scale.set(w/.04,1+ex.pucker*.8,1);const curve=ex.smile*.0075-ex.frown*.006;for(const lp of[F.upLip,F.loLip])lp.userData.sides.forEach((m,i)=>{const sd=i?1:-1;m.position.y=curve*.5;m.rotation.z=sd*Math.atan2(curve,.0145)*.95});
- F.mouth.position.y=-.062-.002*ex.frown;
- const gap=Math.max(.0005,upY-loY-.0062);F.inner.visible=open>.03;F.inner.position.y=(upY+loY)/2;F.inner.scale.set(w*.46,gap/2,.003);
- const cy=(upY+loY)/2+curve;F.cornerL.position.set(-w/2,cy,0);F.cornerR.position.set(w/2,cy,0);
+ const w=.04*(1+.45*ex.smile+.3*ex.wide-.5*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile-.0008*ex.press,loY=-.0062-.024*open+.001*ex.smile+.0015*ex.press;
+ F.upLip.position.y=upY;F.loLip.position.y=loY;{const ly=(1+ex.pucker*.8)*(1-.35*ex.press);F.upLip.scale.set(w/.04,ly,1);F.loLip.scale.set(w/.04,ly,1)}const curve=ex.smile*.0075-ex.frown*.006;for(const lp of[F.upLip,F.loLip])lp.userData.sides.forEach((m,i)=>{const sd=i?1:-1;m.position.y=curve*.5;m.rotation.z=sd*Math.atan2(curve,.0145)*.95});
+ const asym=Math.sin(t*2.3)*.0008*ex.jaw;F.mouth.position.y=-.062-.002*ex.frown;F.mouth.position.z=-.099-.007*ex.pucker;F.mouth.position.x=Math.sin(t*3.1)*.0012*ex.jaw;
+ const gap=Math.max(.0005,upY-loY-.0062);F.inner.visible=open>.03;F.inner.position.y=(upY+loY)/2;F.inner.scale.set(w*(.46-.1*ex.pucker),gap/2,.003);
+ {const tv=ex.teeth>.04&&gap>.0035;F.teethU.visible=tv;F.teethL.visible=tv&&gap>.008&&ex.teeth>.25;F.tongue.visible=gap>.011;
+  if(tv){const th=Math.min(1,gap/.007);F.teethU.scale.set(w*.7/.03,th,1);F.teethU.position.y=upY-.0031-.0022*th;F.teethL.scale.set(w*.6/.03,Math.min(1,(gap-.008)/.006)*.8+.2,1);F.teethL.position.y=loY+.00375+.001}
+  if(F.tongue.visible){F.tongue.scale.set(w*.28,.0035+.0015*open,.004);F.tongue.position.y=loY+.0058}}
+ const cy=(upY+loY)/2+curve;F.cornerL.position.set(-w/2,cy-asym,0);F.cornerR.position.set(w/2,cy+asym,0);
  F.jaw.position.y=-.055-.014*open;
  for(const k of['L','R']){const br=F['brow'+k],s=br.userData.s;
   br.position.y=.049+.008*ex.brow+.005*ex.browIn-.007*ex.angry;br.rotation.z=br.userData.rz+s*ex.angry*.4-s*ex.browIn*.3;
@@ -1350,7 +1373,7 @@ function updateFace(dt,t){const F=_avP.face,now=performance.now();if(!F)return;
 
 function setFingers(grp,trig,sq,thumbOn,dt,present,pointing){
  const c=grp.userData.c,fs=grp.userData.fs,k=Math.min(1,dt*18);
- const tg=present?[pointing?0:trig*.9+sq*.1,.2+sq*.8,.2+sq*.8,.2+sq*.8,thumbOn?0:.9]:[.3,.3,.3,.3,.3];
+ const tg=present?[pointing?0:trig*.9+sq*.1,.2+sq*.8,.2+sq*.8,.2+sq*.8,thumbOn?.9:0]:[.3,.3,.3,.3,.3];
  if(present&&pointing){tg[0]=0;tg[1]=tg[2]=tg[3]=.9;tg[4]=.5}
  const sg=grp.userData.sg;
  fs.forEach((f,i)=>{c[i]+=(tg[i]-c[i])*k;const a=c[i];
