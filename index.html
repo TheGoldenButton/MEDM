@@ -56,6 +56,7 @@ body.ar-on #c{background:transparent}
 <label>Muse Spark endpoint</label><input id="kSparkUrl" type="text">
 <label>Muse Spark model</label><input id="kSparkModel" type="text">
 <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="kLip" type="checkbox" style="width:auto"> Lip-sync &amp; expressions from microphone (mouth moves when you talk)</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="kMirror" type="checkbox" style="width:auto"> Show the mirror</label>
 <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="kSfx" type="checkbox" style="width:auto"> Sound effects (emoji notes, wheel shimmer, fairy chime)</label>
 <div><button id="saveSet">Save</button> <button id="closeSet" class="ghost">Close</button> <button id="clearSet" class="ghost">Clear key</button></div>
 <p class="note">Spark receives one message: for translation, a short instruction to translate what you said into an emoji sequence of 12 or less; for Ask Spark (trigger-hold, wheel closed), an instruction to actually answer your question helpfully as a separate assistant, using the scene image for context. Lewd or hateful content is not translated.</p></div></div>
@@ -196,15 +197,15 @@ const arShadow=new THREE.Mesh(new THREE.PlaneGeometry(14,14),new THREE.ShadowMat
 const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1536,textureHeight:1536,color:0xcfd8dc});
 mirror.position.set(0,1.55,-4.94);scene.add(mirror);arHide.push(mirror);
 
-let inMirror=false;
+let inMirror=false,mirrorBtn=null,mirrorFrame=null,mirrorOfferT=0,mirrorOn=true;try{mirrorOn=localStorage.getItem('mirrorOn')!=='0'}catch(_){}
 
 {const _mob=mirror.onBeforeRender;mirror.onBeforeRender=function(...a){
-  inMirror=true;setHeadVis(true);const _uiv=ui.visible;ui.visible=false;let flipped=false,sq,ssx;
+  inMirror=true;setHeadVis(true);const _uiv=ui.visible;ui.visible=false;const _mbv=mirrorBtn?mirrorBtn.visible:false;if(mirrorBtn)mirrorBtn.visible=false;let flipped=false,sq,ssx;
   if(wheel.visible){flipped=true;sq=wheel.quaternion.clone();ssx=wheel.scale.x;
    const vp=new THREE.Vector3().setFromMatrixPosition(a[2].matrixWorld);vp.z=2*mirror.position.z-vp.z;
    wheel.lookAt(vp);wheel.scale.x=-ssx;wheel.updateMatrixWorld(true)}
-  try{_mob.apply(this,a)}finally{inMirror=false;setHeadVis(false);ui.visible=_uiv;if(flipped){wheel.quaternion.copy(sq);wheel.scale.x=ssx;wheel.updateMatrixWorld(true)}}}}
-{const f=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.8,.08),new THREE.MeshStandardMaterial({color:0x222222,roughness:.4,metalness:.6}));f.position.set(0,1.55,-4.99);scene.add(f);arHide.push(f);}
+  try{_mob.apply(this,a)}finally{inMirror=false;setHeadVis(false);ui.visible=_uiv;if(mirrorBtn)mirrorBtn.visible=_mbv;if(flipped){wheel.quaternion.copy(sq);wheel.scale.x=ssx;wheel.updateMatrixWorld(true)}}}}
+{const f=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.8,.08),new THREE.MeshStandardMaterial({color:0x222222,roughness:.4,metalness:.6}));f.position.set(0,1.55,-4.99);scene.add(f);arHide.push(f);mirrorFrame=f;mirror.visible=f.visible=mirrorOn}
 
 const MAXA=renderer.capabilities.getMaxAnisotropy();
 const emojiTexCache=new Map();
@@ -606,6 +607,16 @@ const cogBtns=[uiRectBtn('editKey','✏️ API key',-.33,-.22,.31,.1),uiRectBtn(
 for(let i=0;i<HELP_SECS.length;i++){const hm=new THREE.Mesh(new THREE.PlaneGeometry(.94,(HELP_ROW-8)/1000),new THREE.MeshBasicMaterial({visible:false}));hm.position.set(0,.02,-.94);hm.visible=false;hm.userData.btn='help:'+i;hm.userData.hit=[.47,(HELP_ROW-8)/2000];hm.userData.hs=1;ui.add(hm);helpHits.push(hm)}
 drawHelp();
 const uiTargets=[...uiBtns,...cogBtns,...helpHits];
+/* mirror toggle: a button that sits ON the mirror and appears when you aim a controller at it */
+mirrorBtn=uiRectBtn('mirrorToggle',mirrorOn?'🪞 Hide mirror':'🪞 Show mirror',0,.7,.62,.15);ui.remove(mirrorBtn);scene.add(mirrorBtn);mirrorBtn.position.set(0,.7,-4.92);mirrorBtn.renderOrder=1002;mirrorBtn.userData.hs=1.1;
+function setMirror(v){mirrorOn=!!v;try{localStorage.setItem('mirrorOn',mirrorOn?'1':'0')}catch(_){}
+ mirror.visible=mirrorOn&&!arMode;if(mirrorFrame)mirrorFrame.visible=mirrorOn&&!arMode;mirrorBtn.userData.setLabel(mirrorOn?'🪞 Hide mirror':'🪞 Show mirror');const k=$('kMirror');if(k)k.checked=mirrorOn;setStatus(mirrorOn?'Mirror on.':'Mirror off. Aim at the back wall where it was to bring it back.')}
+$('kMirror').checked=mirrorOn;$('kMirror').onchange=()=>setMirror($('kMirror').checked);
+const _mo=new THREE.Vector3(),_md=new THREE.Vector3(),_mq=new THREE.Quaternion();
+function mirrorAimedBy(c){c.getWorldPosition(_mo);c.getWorldQuaternion(_mq);_md.set(0,0,-1).applyQuaternion(_mq);if(_md.z>=-.05)return false;
+ const t=(-4.94-_mo.z)/_md.z;if(t<=0||t>14)return false;const x=_mo.x+_md.x*t,y=_mo.y+_md.y*t;return Math.abs(x)<1.3&&Math.abs(y-1.55)<1.4}
+function pickMirrorBtn(wo,wd){if(!mirrorBtn.visible||wd.z>=-.02)return null;const t=(mirrorBtn.position.z-wo.z)/wd.z;if(t<0)return null;
+ const x=wo.x+wd.x*t-mirrorBtn.position.x,y=wo.y+wd.y*t-mirrorBtn.position.y;return(Math.abs(x)<mirrorBtn.userData.hit[0]&&Math.abs(y)<mirrorBtn.userData.hit[1])?mirrorBtn:null}
 
 const toast=textPanel(.9,.3,900,300,2);toast.position.set(0,-.3,-.9);toast.visible=false;toast.renderOrder=1001;toast.material.depthTest=false;ui.add(toast);
 let toastUntil=0;function vrToast(title,body){return;if(!renderer.xr.isPresenting)return;toast.userData.draw(title,body);toast.visible=true;toastUntil=performance.now()+6000}
@@ -1124,7 +1135,7 @@ function closeWheelAndSend(){if(!wheelOpen)return;startClose();wheelLatched=fals
 
 function applyARMode(on){arMode=!!on;arShadow.visible=arMode;onARChanged();document.body.classList.toggle('ar-on',arMode);const b=$('arBtn');b.classList.toggle('ar-on',arMode);b.textContent=arMode?'📷 AR On — tap to exit':'📷 AR Mode';
  scene.background=arMode?null:new THREE.Color(0xe9e9e7);scene.fog=arMode?null:new THREE.Fog(0xe9e9e7,12,26);renderer.setClearColor(0x000000,arMode?0:1);
- for(const o of arHide)o.visible=!arMode;const v=$('arCam');if(!arMode){if(!(renderer.xr.isPresenting&&xrSessionMode==='immersive-ar'))stopSnapCam();v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
+ for(const o of arHide)o.visible=!arMode&&((o!==mirror&&o!==mirrorFrame)||mirrorOn);const v=$('arCam');if(!arMode){if(!(renderer.xr.isPresenting&&xrSessionMode==='immersive-ar'))stopSnapCam();v.style.display='none';if(arCamStream){arCamStream.getTracks().forEach(t=>t.stop());arCamStream=null}}
  setStatus(arMode?'📷 AR mode — real world via headset cameras. Hold the trigger (wheel closed) and ask Spark about what you see.':'VR mode — back in the virtual room.')}
 async function enterXR(kind){startLipSync();if(!navigator.xr){
    if(kind==='ar'){if(arMode){applyARMode(false);return true}try{arCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});const v=$('arCam');v.srcObject=arCamStream;v.style.display='block';applyARMode(true);return true}catch(e){setStatus('AR needs a headset (or camera permission): '+e.message)}return false}
@@ -1182,19 +1193,20 @@ function turnRig(a){const p=worldPos(camera,new THREE.Vector3());rig.position.su
 const UI_Z=-.9,uiConsumed={left:false,right:false},uiPressed={left:false,right:false},uiPrev={left:null,right:null},panelHit={userData:{btn:'panel'}};
 let uiHoverNow={left:null,right:null},searchHotHand=null,wheelLatched=false,prevHot=false;
 const _uo=new THREE.Vector3(),_ud=new THREE.Vector3(),_uq=new THREE.Quaternion(),_uqi=new THREE.Quaternion();
-function uiPick(c){c.getWorldPosition(_uo);c.getWorldQuaternion(_uq);_ud.set(0,0,-1).applyQuaternion(_uq);
+function uiPick(c){c.getWorldPosition(_uo);c.getWorldQuaternion(_uq);_ud.set(0,0,-1).applyQuaternion(_uq);const mh=pickMirrorBtn(_uo,_ud);
  ui.worldToLocal(_uo);ui.getWorldQuaternion(_uqi).invert();_ud.applyQuaternion(_uqi);
- if(_ud.z>=-.02)return null;
+ if(_ud.z>=-.02)return mh;
  let best=null,bd=1e9;
  for(const b of uiTargets){if(!b.visible)continue;const t=(b.position.z-_uo.z)/_ud.z;if(t<0)continue;
   const x=_uo.x+_ud.x*t-b.position.x,y=_uo.y+_ud.y*t-b.position.y,hw=b.userData.hit[0],hh=b.userData.hit[1];
   if(Math.abs(x)<hw&&Math.abs(y)<hh){const d=Math.hypot(x/hw,y/hh);if(d<bd){bd=d;best=b}}}
  if(best)return best;
+ if(mh)return mh;
  if(panelOpen){const t=(-.95-_uo.z)/_ud.z;if(t>0){const x=_uo.x+_ud.x*t,y=_uo.y+_ud.y*t;if(Math.abs(x)<.52&&Math.abs(y-.02)<.36)return panelHit}}
  return null}
 function uiPress(h){const hit=uiHoverNow[h];if(!hit||uiPressed[h])return false;if((wheelOpen||wheelClosing)&&uiBtns.indexOf(hit)>=0)return false;/* top buttons are faded out while the wheel is up */uiPressed[h]=true;uiConsumed[h]=true;const id=hit.userData.btn;
  if(id==='⚙️')setPanel('cog');else if(id==='?')setPanel('help');else if(id==='📷')toggleAR();else if(typeof id==='string'&&id.indexOf('help:')===0)toggleHelpSec(+id.slice(5));else if(id==='panel')setPanel(panelOpen);
- else if(id==='editKey')openSystemKeyboard('key');else if(id==='clearKey')clearKey();else if(id==='toggleSfx')setSfx(!sfxOn);
+ else if(id==='editKey')openSystemKeyboard('key');else if(id==='clearKey')clearKey();else if(id==='toggleSfx')setSfx(!sfxOn);else if(id==='mirrorToggle')setMirror(!mirrorOn);
  haptic(h,.7,40);return true}
 
 const xrInput=document.createElement('input');xrInput.type='text';xrInput.autocomplete='off';xrInput.spellcheck=false;xrInput.setAttribute('aria-label','VR text entry');
@@ -1303,10 +1315,10 @@ function sampleLip(dt){if(!lip.an)return;lip.an.getFloatTimeDomainData(lip.td);l
  /* rough vowel / consonant classes from the spectrum: F1 share = how open the vowel is, F2+F3 share = front (ee) vs back (oo), 4-8k = s/f/sh */
  const osh=b1/(b1+b2+1),fsh=(b2+b3)/(b1+b2+b3+1);
  if(lvl>.2){const r=Math.min(1,dt*.4);lip.oMean+=(osh-lip.oMean)*r;lip.fMean+=(fsh-lip.fMean)*r}
- const open=clampN(.5+(osh-lip.oMean)*5,0,1),front=clampN((fsh-lip.fMean)*7,-1,1);
+ const open=clampN(.5+(osh-lip.oMean)*5,0,1),front=clampN((fsh-lip.fMean)*10,-1,1);
  const voiced=clampN(lvl*2.2,0,1),fric=clampN((b4/tot-.15)*6,0,1)*clampN(lvl*2.5,0,1);
  let jawT=lvl*(.3+.7*open);jawT=jawT*(1-.7*fric)+.09*fric;
- const wideT=clampN(Math.max(0,front)+.55*fric,0,1)*voiced*(1-.35*open),roundT=clampN(Math.max(0,-front),0,1)*voiced*(1-fric)*(1-.3*open);
+ const wideT=clampN(Math.max(0,front)+.55*fric+.4*open*lvl,0,1)*voiced,roundT=clampN(Math.max(0,-front),0,1)*voiced*(1-fric)*(1-.3*open);
  const teethT=clampN(wideT*.9+fric+open*lvl*.45,0,1);
  /* mouth shuts between syllables and on b/p/m: remember we're mid-speech, and firm the lips whenever the jaw closes */
  if(lvl>.12)lip.speakT=.35;else lip.speakT=Math.max(0,lip.speakT-dt);
@@ -1314,7 +1326,7 @@ function sampleLip(dt){if(!lip.an)return;lip.an.getFloatTimeDomainData(lip.td);l
  /* emphasis: a sudden loud syllable lifts the brows */
  const onset=lvl-lip.prevLvl;lip.prevLvl=lvl;lip.emph=Math.max(lip.emph*Math.exp(-dt*4.5),clampN(onset*5,0,1));
  const sm=(v,t,up,dn)=>v+(t-v)*Math.min(1,dt*(t>v?up:dn));
- lip.jaw=sm(lip.jaw,jawT,36,13);lip.wide=sm(lip.wide,wideT,16,9);lip.pucker=sm(lip.pucker,roundT,16,9);lip.teeth=sm(lip.teeth,teethT,22,14);lip.press=sm(lip.press,pressT,40,18);
+ lip.jaw=sm(lip.jaw,jawT,36,13);lip.wide=sm(lip.wide,wideT,24,10);lip.pucker=sm(lip.pucker,roundT,16,9);lip.teeth=sm(lip.teeth,teethT,22,14);lip.press=sm(lip.press,pressT,40,18);
  lip.smile=lip.speakT>0?.1:0;lip.hiR=fsh}
 
 /* WebXR face tracking adapter: accepts ARKit-style or OpenXR-style expression names from whatever shape the browser exposes */
@@ -1351,8 +1363,8 @@ function updateFace(dt,t){const F=_avP.face,now=performance.now();if(!F)return;
  T.blinkL=LID_REST+(1-LID_REST)*clampN(T.blinkL,0,1);T.blinkR=LID_REST+(1-LID_REST)*clampN(T.blinkR,0,1);
  for(const k in ex)ex[k]+=(T[k]-ex[k])*Math.min(1,dt*(k.indexOf('blink')===0?40:18));
 
- const w=.04*(1+.45*ex.smile+.3*ex.wide-.5*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile-.0008*ex.press,loY=-.0062-.024*open+.001*ex.smile+.0015*ex.press;
- F.upLip.position.y=upY;F.loLip.position.y=loY;{const ly=(1+ex.pucker*.8)*(1-.35*ex.press);F.upLip.scale.set(w/.04,ly,1);F.loLip.scale.set(w/.04,ly,1)}const curve=ex.smile*.0075-ex.frown*.006;for(const lp of[F.upLip,F.loLip])lp.userData.sides.forEach((m,i)=>{const sd=i?1:-1;m.position.y=curve*.5;m.rotation.z=sd*Math.atan2(curve,.0145)*.95});
+ const w=.04*(1+.45*ex.smile+.8*ex.wide+.3*ex.jaw-.5*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile-.0008*ex.press,loY=-.0062-.024*open+.001*ex.smile+.0015*ex.press;
+ F.upLip.position.y=upY;F.loLip.position.y=loY;{const ly=(1+ex.pucker*.8)*(1-.35*ex.press);F.upLip.scale.set(w/.04,ly,1);F.loLip.scale.set(w/.04,ly,1)}const curve=ex.smile*.0075+ex.wide*.005-ex.frown*.006;for(const lp of[F.upLip,F.loLip])lp.userData.sides.forEach((m,i)=>{const sd=i?1:-1;m.position.y=curve*.5;m.rotation.z=sd*Math.atan2(curve,.0145)*.95});
  const asym=Math.sin(t*2.3)*.0008*ex.jaw;F.mouth.position.y=-.062-.002*ex.frown;F.mouth.position.z=-.099-.007*ex.pucker;F.mouth.position.x=Math.sin(t*3.1)*.0012*ex.jaw;
  const gap=Math.max(.0005,upY-loY-.0062);F.inner.visible=open>.03;F.inner.position.y=(upY+loY)/2;F.inner.scale.set(w*(.46-.1*ex.pucker),gap/2,.003);
  {const tv=ex.teeth>.04&&gap>.0035;F.teethU.visible=tv;F.teethL.visible=tv&&gap>.008&&ex.teeth>.25;F.tongue.visible=gap>.011;
@@ -1405,7 +1417,7 @@ const childEmote={until:0,dur:1,jaw:0,smile:0,frown:0,pucker:0,brow:0,browIn:0,a
  /* no hem ring: the lathe's own bottom edge is the hem */
  const pelvis=latheM([[.001,.27],[.115,.285],[.15,.34],[.145,.42],[.14,.475],[.001,.485]],blueDark);pelvis.scale.set(1,1,.85);
  {const wb=new THREE.Mesh(new THREE.TorusGeometry(.126,.01,8,32),blueDark);wb.rotation.x=Math.PI/2;wb.scale.set(1,.85,1);wb.position.y=.462;wb.castShadow=true;sparkChild.add(wb);
-  const seam=new THREE.Mesh(new THREE.BoxGeometry(.006,.2,.004),new THREE.MeshStandardMaterial({color:0x2f3f5c,roughness:.9}));seam.position.set(0,.37,-.123);sparkChild.add(seam)}
+  }
  for(const s of[-1,1]){
   const hx=s*.075,thG=new THREE.CylinderGeometry(.057,.046,.165,14);thG.translate(0,-.0825,0);
   const thigh=add(new THREE.Mesh(thG,blueDark));thigh.position.set(hx,.335,0);
@@ -1803,6 +1815,9 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   for(const b of uiBtns){b.material.opacity=topBtnFade;b.visible=topBtnFade>.03}}
  if(toast.visible&&performance.now()>toastUntil)toast.visible=false;
  if(inXR){ui.updateWorldMatrix(true,true);
+  {let aim=false;for(const h of['left','right']){const c=ctrlHand[h];if(!c||(wheelOpen&&h===wheelHand)||listening||kb)continue;if(mirrorAimedBy(c))aim=true}
+   if(aim)mirrorOfferT=1;else mirrorOfferT=Math.max(0,mirrorOfferT-dt);
+   mirrorBtn.visible=mirrorOfferT>0&&!wheelOpen&&!wheelClosing&&!arMode&&!panelOpen;mirrorBtn.updateMatrixWorld(true)}
   for(const h of['left','right']){const c=ctrlHand[h];if(!c)continue;const S=h==='left'?L:R,Pv=prevH[h];
    const hit=((wheelOpen&&h===wheelHand)||listening||kb)?null:uiPick(c); uiHover[h]=hit;
    if(!S.trigger){uiPressed[h]=false;uiConsumed[h]=false}
@@ -1810,7 +1825,9 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    if(hit&&hit!==uiPrev[h]&&hit.userData.btn!=='panel')haptic(h,.25,20);uiPrev[h]=hit;
    if(c.userData.ray)c.userData.ray.material.color.setHex(hit?0x34e08a:0xffc400)}
   uiHoverNow=uiHover;
-  for(const b of uiTargets){const hov=uiHover.left===b||uiHover.right===b,hs=b.userData.hs||1.25;b.scale.setScalar(b.scale.x+((hov?hs:1)-b.scale.x)*.3)}}
+  for(const b of uiTargets){const hov=uiHover.left===b||uiHover.right===b,hs=b.userData.hs||1.25;b.scale.setScalar(b.scale.x+((hov?hs:1)-b.scale.x)*.3)}
+  {const hov=uiHover.left===mirrorBtn||uiHover.right===mirrorBtn;mirrorBtn.scale.setScalar(mirrorBtn.scale.x+((hov?1.1:1)-mirrorBtn.scale.x)*.3)}}
+ else mirrorBtn.visible=false;
 
  if(!listening)voiceHand=null;
  if(inXR){
