@@ -395,7 +395,7 @@ function resetClose(){closeT=0;ballFlying=false;if(ball.parent!==wheel)wheel.add
  wheelTitle.position.set(0,.185,.02);searchBtn.position.set(SEARCH_P.x,SEARCH_P.y,.012);seqStrip.position.set(0,-.46,.015);
  ring.material.opacity=1;for(const m of emojiMeshes){m.visible=true;m.scale.setScalar(1);m.position.copy(m.userData.home)}
  ball.material.opacity=1;ball.material.transparent=false;ball.visible=true;ball.scale.setScalar(1)}
-function startClose(){wheelClosing=true;closeT=0;spawnT=SPAWN_TRACE+SPAWN_POP+BALL_T+1;closeBase=wheel.scale.x/spawnScale();
+function startClose(){sfxWhoosh(false);wheelClosing=true;closeT=0;spawnT=SPAWN_TRACE+SPAWN_POP+BALL_T+1;closeBase=wheel.scale.x/spawnScale();
  tracer.visible=false;restoreSpawnHidden();ring.material.opacity=1;ball.material.transparent=true;
  ballShadow.visible=false;core.visible=false;for(const a of arcs)a.visible=false}
 function runClosing(dt){
@@ -491,7 +491,7 @@ function renderSeqStrip(){while(seqStrip.children.length)seqStrip.remove(seqStri
  seqEl.textContent=sequence.join(' ');}
 function setTab(i){clickedPeg=null;tabIndex=(i+TABS.length)%TABS.length;snapped=null;lockedEmoji=null;dwell=0;armedPeg=null;buildWheel()}
 buildWheel();
-function selectEmoji(e){if(sequence.length>=MAX_EMOJI){lockedEmoji=e;dwell=0;setStatus('Max '+MAX_EMOJI+' emojis — press the wheel trigger again to send.');return}sequence.push(e);renderSeqStrip();setStatus('Selected '+e+' — press the wheel trigger again to send.');ballPos.set(0,0);ballTarget.set(0,0);snapped=null;lockedEmoji=e;dwell=0;
+function selectEmoji(e){{const pm=emojiMeshes.find(x=>x.userData.emoji===e);if(pm)pegClick(pm,true)}if(sequence.length>=MAX_EMOJI){lockedEmoji=e;dwell=0;setStatus('Max '+MAX_EMOJI+' emojis — press the wheel trigger again to send.');return}sequence.push(e);renderSeqStrip();setStatus('Selected '+e+' — press the wheel trigger again to send.');ballPos.set(0,0);ballTarget.set(0,0);snapped=null;lockedEmoji=e;dwell=0;
  haptic(hapHand,.9,60);}
 const overheadAnims=[];
 const STAGGER=480,HOLD_MS=7000,FADE_MS=1000;
@@ -747,7 +747,7 @@ function summonOrb(){const m=fairyState.mode;if(m==='orb'||m==='orbthink')return
 
 function fairyThink(){if(fairyState.mode==='hidden')summonOrb();if(fairyState.mode==='orb')fairyState.mode='orbthink'}
 
-function beginEmerge(){fairyState.from.copy(orb.position);fairyState.s0=Math.max(.2,orb.scale.x);fairyState.mode='emerge';fairyState.t0=performance.now();
+function beginEmerge(){sfxChime();fairyState.from.copy(orb.position);fairyState.s0=Math.max(.2,orb.scale.x);fairyState.mode='emerge';fairyState.t0=performance.now();
  fairy.position.copy(orb.position);fairy.scale.setScalar(.05);fairy.visible=true;fairyAnswer.visible=false}
 function enterAnswer(){fairyState.mode='answer';fairyState.answerUntil=performance.now()+8000;fairyAnswer.visible=true}
 function fairyDismiss(){const m=fairyState.mode;if(m==='hidden'||m==='return'||m==='orbfade')return;
@@ -955,6 +955,56 @@ addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=
  if(wDragging&&mouseDown&&wheelOpen&&wheelHand==='desktop'){const l=wheelLayout();
   const nx=mouseN.x*l.halfW-wGrabA.x*l.sc,ny=mouseN.y*l.halfH-wGrabA.y*l.sc;
   wDrag.x=THREE.MathUtils.clamp(wDrag.x+(nx-l.xOff),-l.halfW*.9-(l.xOff-wDrag.x),l.halfW*.9-(l.xOff-wDrag.x));wDrag.y=THREE.MathUtils.clamp(wDrag.y+(ny-l.yOff),-l.halfH*.9-(l.yOff-wDrag.y),l.halfH*.9-(l.yOff-wDrag.y))}});
+/* small synthesized sound effects (no audio files) */
+let clickCtx=null,lastClickT=0,_noiseBuf=null;
+function sfxCtx(){if(!clickCtx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;clickCtx=new AC()}
+ if(clickCtx.state==='suspended')clickCtx.resume();return clickCtx}
+/* quiet, metallic tick each time the golden ball passes over a peg: a few inharmonic partials with a very short decay */
+/* every emoji on the wheel has its own note: pegs climb a pentatonic scale (same family as the chimes) clockwise from the top, over 3 octaves.
+   Same metallic/bell timbre as before (inharmonic partials, short decay). strong=true is the longer, louder note played when an emoji is actually picked. */
+const PEG_SCALE=[0,2,4,7,9],PEG_STEPS=15,PEG_ROOT=523.25;
+function pegFreq(m){const n=emojiMeshes.length,i=Math.max(0,emojiMeshes.indexOf(m)),k=n<=1?0:Math.round(i/(n-1)*PEG_STEPS);
+ return PEG_ROOT*Math.pow(2,(PEG_SCALE[k%5]+12*Math.floor(k/5))/12)}
+function pegClick(m,strong){try{const now=performance.now();if(!strong&&now-lastClickT<35)return;lastClickT=now;
+ const c=sfxCtx();if(!c||!m)return;const f=pegFreq(m),t=c.currentTime,out=c.createGain(),lp=c.createBiquadFilter();
+ lp.type='lowpass';lp.frequency.value=7000;out.gain.value=(strong?.035:.022)*Math.min(1.5,Math.max(.8,1600/f));out.connect(lp);lp.connect(c.destination);
+ const dm=strong?2.6:1;
+ for(const[r,a,d0]of[[1,1,.16],[2.76,.5,.07],[5.4,.22,.035]]){const d=d0*dm,
+  o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f*r;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(a,t+.002);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.01)}}catch(_){}}
+/* magical shimmer as the wheel emerges (rising) or disappears (falling): different every time
+   (random scale, pitch, note count, speed, glide and wobble), always keeping its direction */
+function sfxWhoosh(up){try{const c=sfxCtx();if(!c)return;const t0=c.currentTime,R=Math.random;
+ const master=c.createGain(),lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5000+R()*2500;master.gain.value=1;master.connect(lp);lp.connect(c.destination);
+ const dur=.34+R()*.2,lo=420+R()*220,hi=lo*(2+R()*.8);
+ /* soft glassy glide underneath */
+ {const o=c.createOscillator(),g=c.createGain(),lfo=c.createOscillator(),lg=c.createGain();o.type=R()<.3?'triangle':'sine';
+  o.frequency.setValueAtTime(up?lo:hi,t0);o.frequency.exponentialRampToValueAtTime(up?hi:lo,t0+dur);
+  lfo.frequency.value=6+R()*8;lg.gain.value=8+R()*14;lfo.connect(lg);lg.connect(o.frequency);
+  g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(.011+R()*.004,t0+dur*.32);g.gain.exponentialRampToValueAtTime(.0001,t0+dur+.03);
+  o.connect(g);g.connect(master);o.start(t0);lfo.start(t0);o.stop(t0+dur+.1);lfo.stop(t0+dur+.1)}
+ /* a run of bell-like sparkles up (opening) or down (closing) a randomly chosen scale */
+ const scale=CHIME_SCALES[Math.floor(R()*CHIME_SCALES.length)],root=1047*Math.pow(2,(Math.floor(R()*7)-3)/12),n=5+Math.floor(R()*4),
+  step=.03+R()*.035,decay=.26+R()*.3,vol=.013+R()*.006,ratio=R()<.5?2.01:2.76;
+ const ks=[];for(let i=0;i<n;i++)ks.push(up?i:n-1-i);
+ ks.forEach((k,i)=>{const deg=scale[k%scale.length]+12*Math.floor(k/scale.length),fr=root*Math.pow(2,deg/12),
+  t=t0+i*step*(.85+R()*.3),o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain(),g2=c.createGain();
+  o.type='sine';o2.type='sine';o.frequency.value=Math.min(4200,fr*(1+(R()-.5)*.006));o2.frequency.value=o.frequency.value*ratio;
+  const peak=vol*(up?(.5+i/n*.6):(1.05-i/n*.6))*(.8+R()*.4);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+decay);
+  g2.gain.value=.2+R()*.15;o2.connect(g2);g2.connect(g);o.connect(g);g.connect(master);
+  o.start(t);o2.start(t);o.stop(t+decay+.02);o2.stop(t+decay+.02)})}catch(_){}}
+/* twinkle when the Spark fairy appears: a different little phrase every time (random scale, root, contour, speed, length) */
+const CHIME_SCALES=[[0,2,4,7,9],[0,2,3,7,9],[0,3,5,7,10],[0,2,4,6,9],[0,4,7,11,14]];
+function sfxChime(){try{const c=sfxCtx();if(!c)return;const t0=c.currentTime,R=Math.random;
+ const scale=CHIME_SCALES[Math.floor(R()*CHIME_SCALES.length)],root=880*Math.pow(2,Math.floor(R()*7)/12),n=3+Math.floor(R()*4),
+  step=.045+R()*.07,decay=.35+R()*.45,vol=.032+R()*.012,contour=Math.floor(R()*3);/* 0 up, 1 down, 2 up then down */
+ let idx=[];for(let i=0;i<n;i++)idx.push(contour===1?n-1-i:contour===2?(i<n/2?i:n-1-i):i);
+ idx.forEach((k,i)=>{const deg=scale[k%scale.length]+12*Math.floor(k/scale.length),fr=root*Math.pow(2,deg/12)*(1+(R()-.5)*.006),t=t0+i*step*(.85+R()*.3);
+  const o=c.createOscillator(),g=c.createGain();o.type=R()<.25?'triangle':'sine';o.frequency.value=fr;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol*(.7+R()*.5),t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+decay);
+  o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+decay+.05)})}catch(_){}}
 let wheelOpen=false,wheelHand=null,voiceHand=null,wasTrigger=false,stickDir=0,stickRep=0,jumpV=0,wasGrab=false,armedPeg=null,ballHeld=false,viaStick=false,armedMem=null,armedMemT=0,hapHand='right',hapAcc=0,prevSnapPeg=null,wasArmedPeg=false;
 const TRIGGER_HOLD_MS=450;
 const pendingWheel={left:0,right:0,desktop:0};
@@ -962,7 +1012,7 @@ let askHand=null,holdTransHand=null,deskLVoice=false;const pendingClose={left:0,
 const holdOff=new THREE.Vector2(),GRAB_R=.11;
 const OUTER=.15;
 const prevH={left:{trigger:false,squeeze:false},right:{trigger:false,squeeze:false}};
-function openWheel(h){if(wheelOpen)return;wheelClosing=false;resetClose();spawnT=0;clickedPeg=null;wDrag.x=wDrag.y=0;vrOff.set(0,0,0);wDragging=false;wheelLatched=true;wheelOpen=true;wheelHand=h||'desktop';wheel.visible=true;lockedEmoji=null;dwell=0;ballHeld=false;viaStick=false;ballPos.set(0,0);ballTarget.set(0,0);setStatus('Wheel open — page: '+TABS[tabIndex].name+'. Grab the ball with your other controller\'s pointer + trigger and drag it to an emoji to pick it. Left thumbstick walks; right thumbstick left/right flips pages.')}
+function openWheel(h){if(wheelOpen)return;sfxWhoosh(true);wheelClosing=false;resetClose();spawnT=0;clickedPeg=null;wDrag.x=wDrag.y=0;vrOff.set(0,0,0);wDragging=false;wheelLatched=true;wheelOpen=true;wheelHand=h||'desktop';wheel.visible=true;lockedEmoji=null;dwell=0;ballHeld=false;viaStick=false;ballPos.set(0,0);ballTarget.set(0,0);setStatus('Wheel open — page: '+TABS[tabIndex].name+'. Grab the ball with your other controller\'s pointer + trigger and drag it to an emoji to pick it. Left thumbstick walks; right thumbstick left/right flips pages.')}
 function cancelWheel(){if(wheelOpen)startClose();wheelLatched=false;wheelOpen=false;wheelHand=null;sequence=[];renderSeqStrip()}
 function closeWheelAndSend(){if(!wheelOpen)return;startClose();wheelLatched=false;wheelOpen=false;wheelHand=null;
  if(sequence.length){const s=[...sequence];sequence=[];renderSeqStrip();popSequence(s);setStatus('Sent above your head: '+s.join(' '))}}
@@ -1409,6 +1459,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    hapAcc-=dt;if(hapAcc<=0){hapAcc=.045;haptic(hapHand,.12+.4*Math.min(1,ballPos.length()/WHEEL_R),60)}
    if(snapped&&snapped!==prevSnapPeg)haptic(hapHand,.65,30);
    if(armedPeg&&!wasArmedPeg)haptic(hapHand,1,80)}
+  if(ballHeld&&snapped&&snapped!==prevSnapPeg)pegClick(snapped);
   prevSnapPeg=snapped;wasArmedPeg=!!armedPeg;
   wasGrab=grab;
   for(const m of emojiMeshes)m.scale.setScalar(m===armedPeg?1.55:(m===snapped?1.25+Math.sin(t*10)*.1:(m===clickedPeg?1.3:1)));
