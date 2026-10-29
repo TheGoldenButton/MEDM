@@ -208,10 +208,11 @@ function makeHuman(){
  const shoeMat=new THREE.MeshStandardMaterial({color:0x232326,roughness:.55});
  const teeMat=new THREE.MeshStandardMaterial({color:0xe8e6e0,roughness:.9});
  const stringMat=new THREE.MeshStandardMaterial({color:0xd8d8d8,roughness:.9});
- const eyeMat=new THREE.MeshStandardMaterial({color:0x3f6d9a,roughness:.25});
+ const eyeMat=new THREE.MeshStandardMaterial({color:0x2a5a96,roughness:.25});
+ const pupilMat=new THREE.MeshBasicMaterial({color:0x05060a}),browMat=new THREE.MeshStandardMaterial({color:0x2a190c,roughness:.9});
  const eyeWhite=new THREE.MeshStandardMaterial({color:0xf4f4f2,roughness:.3});
  const sockMat=new THREE.MeshStandardMaterial({color:0xf2f2f0,roughness:.95});
- const lipMat=new THREE.MeshStandardMaterial({color:0xc08a80,roughness:.6});
+ const lipMat=new THREE.MeshStandardMaterial({color:0xa24550,roughness:.55});
  const add=m=>{m.castShadow=true;g.add(m);return m};
 
  const limbMesh=(rB,rA,mat)=>add(new THREE.Mesh(new THREE.CylinderGeometry(rB,rA,1,18),mat));
@@ -261,20 +262,22 @@ function makeHuman(){
    curl.position.set(x,.104+Math.sin(i*1.7)*.008-Math.abs(x)*.1,-.08-Math.abs(x)*.15+rnd()*.006);head.add(curl)}
 
   for(const s of[-1,1])for(let k=0;k<3;k++){const c=new THREE.Mesh(new THREE.SphereGeometry(.018,10,8),mats[k]);c.position.set(s*.1,.045-k*.026,.008+k*.006);head.add(c)}}
- const nose=new THREE.Mesh(new THREE.SphereGeometry(.016,12,10),skinDark);nose.scale.set(.7,1.4,.95);nose.position.set(0,-.012,-.104);head.add(nose);
+ const nose=new THREE.Mesh(new THREE.SphereGeometry(.021,12,10),skinDark);nose.scale.set(.75,1.4,.95);nose.position.set(0,-.012,-.104);head.add(nose);
  const F={};
  for(const s of[-1,1]){const k=s<0?'L':'R';
-  const ew=new THREE.Mesh(new THREE.SphereGeometry(.0125,12,10),eyeWhite);ew.scale.set(1.15,.8,.6);ew.position.set(s*.038,.022,-.096);head.add(ew);
-  const eye=new THREE.Mesh(new THREE.SphereGeometry(.0075,10,8),eyeMat);eye.position.set(s*.038,.022,-.1);eye.userData.b=eye.position.clone();head.add(eye);F['eye'+k]=eye;
-  const lid=new THREE.Mesh(new THREE.BoxGeometry(.03,.019,.003),skin);lid.position.set(s*.038,.0315,-.1085);lid.visible=false;head.add(lid);F['lid'+k]=lid;
-  const brow=new THREE.Mesh(new THREE.BoxGeometry(.03,.0045,.005),hairMat);brow.position.set(s*.039,.042,-.10);brow.rotation.z=-s*.05;brow.userData.rz=-s*.05;brow.userData.s=s;head.add(brow);F['brow'+k]=brow;
+  const ew=new THREE.Mesh(new THREE.SphereGeometry(.0175,14,10),eyeWhite);ew.scale.set(1.15,.85,.6);ew.position.set(s*.038,.022,-.096);head.add(ew);
+  {const cap=new THREE.Mesh(new THREE.SphereGeometry(.0188,16,8,0,Math.PI*2,0,Math.PI*.21),skin);cap.scale.copy(ew.scale);cap.position.copy(ew.position);head.add(cap)}
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(.0108,14,10),eyeMat);eye.position.set(s*.038,.022,-.1);eye.userData.b=eye.position.clone();head.add(eye);
+  {const pu=new THREE.Mesh(new THREE.SphereGeometry(.0055,10,8),pupilMat);pu.position.z=-.0058;eye.add(pu)}F['eye'+k]=eye;
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(.044,.032,.003),skin);lid.position.set(s*.038,.022,-.1105);lid.visible=false;head.add(lid);F['lid'+k]=lid;
+  const brow=new THREE.Mesh(new THREE.BoxGeometry(.046,.0092,.008),browMat);brow.position.set(s*.039,.049,-.10);brow.rotation.z=-s*.05;brow.userData.rz=-s*.05;brow.userData.s=s;head.add(brow);F['brow'+k]=brow;
   const ear=new THREE.Mesh(new THREE.SphereGeometry(.02,10,8),skin);ear.scale.set(.45,1,.7);ear.position.set(s*.102,-.005,0);head.add(ear);
  }
- const mg=new THREE.Group();mg.position.set(0,-.062,-.096);head.add(mg);F.mouth=mg;F.jaw=jaw;
+ const mg=new THREE.Group();mg.position.set(0,-.062,-.099);head.add(mg);F.mouth=mg;F.jaw=jaw;
  const inner=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),new THREE.MeshStandardMaterial({color:0x3a1a1c,roughness:.8}));inner.visible=false;inner.position.z=.002;mg.add(inner);F.inner=inner;
- const upLip=new THREE.Mesh(new THREE.BoxGeometry(.03,.0042,.005),lipMat);mg.add(upLip);F.upLip=upLip;
- const loLip=new THREE.Mesh(new THREE.BoxGeometry(.03,.0042,.005),lipMat);loLip.position.y=-.0042;mg.add(loLip);F.loLip=loLip;
- for(const k of['L','R']){const c=new THREE.Mesh(new THREE.SphereGeometry(.0046,8,6),lipMat);mg.add(c);F['corner'+k]=c}
+ const upLip=new THREE.Mesh(new THREE.BoxGeometry(.04,.0062,.008),lipMat);mg.add(upLip);F.upLip=upLip;
+ const loLip=new THREE.Mesh(new THREE.BoxGeometry(.04,.0075,.008),lipMat);loLip.position.y=-.0062;mg.add(loLip);F.loLip=loLip;
+ for(const k of['L','R']){const c=new THREE.Mesh(new THREE.SphereGeometry(.0065,8,6),lipMat);mg.add(c);F['corner'+k]=c}
 
  const mkHand=()=>{const m=add(new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),skin));m.scale.set(.9,.5,1.35);return m};
  const mkShoe=()=>{const grp=new THREE.Group();g.add(grp);
@@ -304,10 +307,10 @@ function makeHuman(){
   torso,pelvis,neck,head,upper,
   body:limbMesh(.001,.001,shirt),clav:limbMesh(.001,.001,shirt),clavL:limbMesh(.056,.05,shirt),clavR:limbMesh(.056,.05,shirt),
   upL:limbMesh(.042,.062,shirt),foreL:limbMesh(.032,.042,shirt),upR:limbMesh(.042,.062,shirt),foreR:limbMesh(.032,.042,shirt),
-  thighL:limbMesh(.042,.060,pants),shinL:limbMesh(.032,.044,pants),thighR:limbMesh(.042,.060,pants),shinR:limbMesh(.032,.044,pants),
+  thighL:limbMesh(.045,.068,pants),shinL:limbMesh(.029,.045,pants),thighR:limbMesh(.045,.068,pants),shinR:limbMesh(.029,.045,pants),
   legL:limbMesh(.001,.001,pants),legR:limbMesh(.001,.001,pants),
   jShL:joint(.07,shirt),jShR:joint(.07,shirt),jElL:joint(.043,shirt),jElR:joint(.043,shirt),
-  jKnL:joint(.044,pants),jKnR:joint(.044,pants),jHaL:mkHand(),jHaR:mkHand(),jNk:joint(.05,skin),jWrL:joint(.031,skin),jWrR:joint(.031,skin),
+  jKnL:joint(.0475,pants),jKnR:joint(.0475,pants),jHaL:mkHand(),jHaR:mkHand(),jNk:joint(.05,skin),jWrL:joint(.031,skin),jWrR:joint(.031,skin),
   footL:mkShoe(),footR:mkShoe(),fingL:mkFingers(-1),fingR:mkFingers(1),face:F};
  parts.body.visible=false;parts.clav.visible=false;parts.legL.visible=false;parts.legR.visible=false;
  g.userData.parts=parts;return g}
@@ -951,7 +954,7 @@ addEventListener('pointermove',e=>{if(dragging&&!renderer.xr.isPresenting){yaw-=
 let wheelOpen=false,wheelHand=null,voiceHand=null,wasTrigger=false,stickDir=0,stickRep=0,jumpV=0,wasGrab=false,armedPeg=null,ballHeld=false,viaStick=false,armedMem=null,armedMemT=0,hapHand='right',hapAcc=0,prevSnapPeg=null,wasArmedPeg=false;
 const TRIGGER_HOLD_MS=450;
 const pendingWheel={left:0,right:0,desktop:0};
-let askHand=null,holdTransHand=null,deskLVoice=false;const pendingClose={left:0,right:0};
+let askHand=null,holdTransHand=null,deskLVoice=false;const pendingClose={left:0,right:0};let pendingOff=0,pendingOffHand=null,bothVoice=false,prevBoth=false;
 const holdOff=new THREE.Vector2(),GRAB_R=.11;
 const OUTER=.15;
 const prevH={left:{trigger:false,squeeze:false},right:{trigger:false,squeeze:false}};
@@ -1155,27 +1158,32 @@ function trackedFace(frame){
  set('cheek',get('cheekPuff'));
  return Object.keys(o).length?o:null}
 
-let deskPointing=false,blinkTimer=2,blinkT=0,gazeT=0,gx=0,gy=0;const gazeOff={x:0,y:0},_gv=new THREE.Vector3();
+let idleT=1.5,idleOn=false,idleS=0;let deskPointing=false,blinkTimer=2,blinkT=0,gazeT=0,gx=0,gy=0;const gazeOff={x:0,y:0},_gv=new THREE.Vector3();
 function updateFace(dt,t){const F=_avP.face,now=performance.now();if(!F)return;
  sampleLip(dt);
  const T={jaw:lip.jaw,smile:lip.smile*.8+.06,frown:0,pucker:lip.pucker,blinkL:0,blinkR:0,brow:lip.jaw*.12,browIn:0,angry:0,cheek:0};
  const eo=now<emote.until?Math.min(1,(emote.until-now)/600,(emote.dur-(emote.until-now))/150+.2):0;
  if(eo>0){T.smile=Math.max(T.smile,emote.smile*eo);T.frown=Math.max(T.frown,emote.frown*eo);T.jaw=Math.max(T.jaw,emote.jaw*eo);T.brow=Math.max(T.brow,emote.brow*eo);T.angry=Math.max(T.angry,emote.angry*eo);T.browIn=Math.max(T.browIn,emote.frown*eo*.8)}
+ /* idle life: drift between a neutral face and a gentle smile every few seconds */
+ idleT-=dt;if(idleT<=0){idleOn=!idleOn;idleT=idleOn?2+Math.random()*2.5:2.5+Math.random()*4;}
+ idleS+=((idleOn?.22:0)-idleS)*Math.min(1,dt*1.6);T.smile=Math.max(T.smile,idleS);
  blinkTimer-=dt;if(blinkTimer<=0){blinkT=.17;blinkTimer=1.8+Math.random()*4.5;if(Math.random()<.18)blinkTimer=.25}
  let bl=0;if(blinkT>0){blinkT-=dt;const p=1-Math.max(0,blinkT)/.17;bl=p<.4?p/.4:(1-p)/.6}T.blinkL=T.blinkR=clampN(bl,0,1);
  const tr=trackedFace(lastXRFrame);if(tr)for(const k in tr)T[k]=tr[k];
+ const LID_REST=.12;/* relaxed lids sit partly over the eyes; blinks close fully */
+ T.blinkL=LID_REST+(1-LID_REST)*clampN(T.blinkL,0,1);T.blinkR=LID_REST+(1-LID_REST)*clampN(T.blinkR,0,1);
  for(const k in ex)ex[k]+=(T[k]-ex[k])*Math.min(1,dt*(k.indexOf('blink')===0?40:18));
 
- const w=.03*(1+.45*ex.smile-.4*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile,loY=-.0042-.024*open+.001*ex.smile;
- F.upLip.position.y=upY;F.loLip.position.y=loY;F.upLip.scale.set(w/.03,1+ex.pucker*.8,1);F.loLip.scale.set(w/.03,1+ex.pucker*.8,1);
+ const w=.04*(1+.45*ex.smile-.4*ex.pucker),open=ex.jaw,upY=.0025*open+.0012*ex.smile,loY=-.0062-.024*open+.001*ex.smile;
+ F.upLip.position.y=upY;F.loLip.position.y=loY;F.upLip.scale.set(w/.04,1+ex.pucker*.8,1);F.loLip.scale.set(w/.04,1+ex.pucker*.8,1);
  F.mouth.position.y=-.062-.002*ex.frown;
- const gap=Math.max(.0005,upY-loY-.0042);F.inner.visible=open>.03;F.inner.position.y=(upY+loY)/2;F.inner.scale.set(w*.46,gap/2,.003);
+ const gap=Math.max(.0005,upY-loY-.0062);F.inner.visible=open>.03;F.inner.position.y=(upY+loY)/2;F.inner.scale.set(w*.46,gap/2,.003);
  const cy=(upY+loY)/2+.007*ex.smile-.006*ex.frown;F.cornerL.position.set(-w/2,cy,0);F.cornerR.position.set(w/2,cy,0);
  F.jaw.position.y=-.055-.014*open;
  for(const k of['L','R']){const br=F['brow'+k],s=br.userData.s;
-  br.position.y=.042+.008*ex.brow+.005*ex.browIn-.007*ex.angry;br.rotation.z=br.userData.rz+s*ex.angry*.4-s*ex.browIn*.3;
-  let b=k==='L'?ex.blinkL:ex.blinkR;b=Math.min(1,b+.22*ex.smile+.3*ex.angry);
-  const lid=F['lid'+k];lid.visible=b>.03;lid.scale.y=Math.max(.01,b);lid.position.y=.0315-.0095*b}
+  br.position.y=.049+.008*ex.brow+.005*ex.browIn-.007*ex.angry;br.rotation.z=br.userData.rz+s*ex.angry*.4-s*ex.browIn*.3;
+  let b=k==='L'?ex.blinkL:ex.blinkR;b=Math.min(1,Math.max(0,b+.22*ex.smile+.3*ex.angry+.4*Math.max(0,-gy)-.06*Math.max(0,gy)));/* upper lid follows the gaze down so no white shows above the iris */
+  const lid=F['lid'+k];lid.visible=b>.03;lid.scale.y=Math.max(.01,b);lid.position.y=.038-.016*b}
 
  gazeT-=dt;if(gazeT<=0){gazeT=1+Math.random()*3;gazeOff.x=(Math.random()-.5)*.7;gazeOff.y=(Math.random()-.5)*.4}
  let tx=gazeOff.x,ty=gazeOff.y,tgt=null;if(wheelOpen)tgt=wheel.position;else if(fairy.visible)tgt=fairy.position;
@@ -1260,6 +1268,8 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
 
   const headC=worldPos(camera,new THREE.Vector3()).sub(avatar.position).divideScalar(avSc).sub(new THREE.Vector3(0,.022,-.09).applyQuaternion(camQ));
   const nBase=new THREE.Vector3(0,1.48-dropS,0),nTop=headC.clone().add(new THREE.Vector3(0,-.085,.015).applyQuaternion(camQ));
+  {const d0=nTop.clone().sub(nBase),l=d0.length(),NMAX=.15;/* looking down swings the neck socket upward: pull the head back down so the neck can't stretch */
+   if(l>NMAX){const c=d0.clone().multiplyScalar(NMAX/l).sub(d0);headC.add(c);nTop.add(c)}}
   P.head.position.copy(headC);P.head.quaternion.copy(camQ);
   setLimb(P.neck,nBase,nTop);P.jNk.position.copy(nBase);
   ghostHead.position.copy(P.head.position);ghostHead.quaternion.copy(P.head.quaternion);ghostNeck.position.copy(P.neck.position);ghostNeck.quaternion.copy(P.neck.quaternion);ghostNeck.scale.copy(P.neck.scale);ghostJNk.position.copy(P.jNk.position);
@@ -1307,8 +1317,17 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    if(pendingClose[h]&&!S.trigger){pendingClose[h]=0;if(wheelOpen&&wheelHand===h&&!listening&&!kb)closeWheelAndSend()}
    if(pendingWheel[h]&&S.trigger&&!S.squeeze&&performance.now()-pendingWheel[h]>=TRIGGER_HOLD_MS&&!wheelOpen&&!listening){pendingWheel[h]=0;askHand=h;startListening('ask');if(listening)voiceHand=h;else askHand=null}
    if(pendingWheel[h]&&!S.trigger){pendingWheel[h]=0;if(!wheelOpen&&!listening&&!kb)openWheel(h)}
-   if(listening&&voiceHand===h&&voiceMode==='ask'&&askHand===h&&!S.trigger){releaseVoice();voiceHand=null;askHand=null}
-   else if(listening&&voiceHand===h&&voiceMode!=='ask'&&!(holdTransHand===h?S.trigger:comboNow)){releaseVoice();voiceHand=null;if(holdTransHand===h)holdTransHand=null}}
+   if(listening&&!bothVoice&&voiceHand===h&&voiceMode==='ask'&&askHand===h&&!S.trigger){releaseVoice();voiceHand=null;askHand=null}
+   else if(listening&&!bothVoice&&voiceHand===h&&voiceMode!=='ask'&&!(holdTransHand===h?S.trigger:comboNow)){releaseVoice();voiceHand=null;if(holdTransHand===h)holdTransHand=null}}
+  /* both index triggers held (wheel closed): speak and translate to emoji; release either trigger to send */
+  {const both=L.trigger&&R.trigger&&!L.squeeze&&!R.squeeze;
+   if(both&&!prevBoth&&!wheelOpen&&!kb&&!uiHover.left&&!uiHover.right&&!uiConsumed.left&&!uiConsumed.right){
+    pendingWheel.left=pendingWheel.right=0;
+    if(listening&&voiceMode==='ask'&&curSession){abortSession(curSession,'');askHand=null;voiceHand=null}
+    if(!listening){bothVoice=true;startListening();if(listening)voiceHand='right';else bothVoice=false}}
+   if(bothVoice&&listening&&!both){releaseVoice();bothVoice=false;voiceHand=null}
+   else if(bothVoice&&!listening)bothVoice=false;
+   prevBoth=both}
  }else{wasTrigger=!!keys.KeyL;
   if(pendingWheel.desktop&&keys.KeyL&&performance.now()-pendingWheel.desktop>=TRIGGER_HOLD_MS&&!listening&&!kb){pendingWheel.desktop=0;deskLVoice=true;if(wheelOpen)startListening();else startListening('ask');if(!listening)deskLVoice=false} }
 
@@ -1339,7 +1358,11 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   if(sHot){const rm=inXR&&ctrlHand[aimHand]&&ctrlHand[aimHand].userData.ray;if(rm)rm.material.color.setHex(0x34e08a);
    if(grab&&!wasGrab&&!(inXR&&uiPressed[aimHand]))startSearch(inXR?aimHand:'desktop')}
   const uiAim=inXR&&(uiHover[aimHand]||uiPressed[aimHand]);
-  if(inXR&&grab&&!wasGrab&&!ballHeld&&!sHot&&!kb&&!uiAim&&aim&&Math.hypot(aim.x,aim.y)>WHEEL_R+.04){closeWheelAndSend();haptic(aimHand,.5,40)}
+  if(inXR&&grab&&!wasGrab&&!ballHeld&&!sHot&&!kb&&!uiAim&&aim&&Math.hypot(aim.x,aim.y)>WHEEL_R+.04){pendingOff=performance.now();pendingOffHand=aimHand}
+  /* off-wheel trigger: tap = close & send, hold = speak and translate to an emoji sequence */
+  if(pendingOff){if(!wheelOpen||listening||kb||pendingOffHand!==aimHand){pendingOff=0}
+   else if(!grab){pendingOff=0;closeWheelAndSend();haptic(aimHand,.5,40)}
+   else if(performance.now()-pendingOff>=TRIGGER_HOLD_MS){pendingOff=0;holdTransHand=aimHand;startListening();if(listening){voiceHand=aimHand;haptic(aimHand,.5,40)}else holdTransHand=null}}
   if(sHot&&!prevHot&&inXR)haptic(aimHand,.25,20);prevHot=sHot;
   searchBtn.userData.draw(kb&&kb.kind==='search'?xrInput.value:searchQuery,!!(kb&&kb.kind==='search'),sHot);
   if(!ballHeld){
