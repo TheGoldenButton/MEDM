@@ -636,12 +636,12 @@ async function finishAsk(said,shot){
  vrToast('🧚 Spark',res.seq.join(' '));
  if(res.seq.length)fairyShowAnswer(res.seq);else fairyDismiss()}
 
-const ORB_DIST=.75,FAIRY_DIST=1.25,FS=1.3,EMERGE_MS=1400;let ORB_SIDE=.1,FAIRY_SIDE=.22,sparkSideT=0;
+const ORB_DIST=1.5,FAIRY_DIST=2.1,FS=2.15,EMERGE_MS=1400;let ORB_SIDE=.1,FAIRY_SIDE=.22,sparkSideT=0;
 const SPARK_CANDIDATES=[0,.18,-.18,.36,-.36,.54,-.54];
 const UPV=new THREE.Vector3(0,1,0),_fw=new THREE.Vector3(),_rt=new THREE.Vector3(),_ey=new THREE.Vector3(),_tp=new THREE.Vector3(),_tp2=new THREE.Vector3();
 
 function frontPos(dist,side,drop,out){camera.getWorldDirection(_fw);_fw.y*=.35;_fw.normalize();_rt.crossVectors(_fw,UPV).normalize();worldPos(camera,_ey);
- out.copy(_ey).addScaledVector(_fw,dist).addScaledVector(_rt,side);out.y+=drop;return out}
+ out.copy(_ey).addScaledVector(_fw,dist).addScaledVector(_rt,side);out.y+=drop;if(!arMode){out.x=Math.max(-4.5,Math.min(4.5,out.x));out.z=Math.max(-4.5,Math.min(4.5,out.z))}return out}
 
 const _spRay=new THREE.Raycaster(),_spD=new THREE.Vector3(),_spP=new THREE.Vector3(),_spH=new THREE.Vector3();
 function sparkObstacles(){const a=[];for(const o of arHide)if(o.visible)a.push(o);
@@ -1294,11 +1294,7 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
    ball.position.set(ballPos.x,ballPos.y,.02+.03*lift);ball.userData.baseSc=sc;ball.userData.baseZ=.02+.03*lift;
    ballShadow.position.set(ballPos.x,ballPos.y,.016);ballShadow.scale.setScalar(.9+.1*lift);ballShadow.material.opacity=.32*lift;ballShadow.visible=lift>0;
    aimDot.visible=false;
-   if(inXR){ptrBalls.desktop.visible=false;for(const h of['left','right']){const pb=ptrBalls[h],c=ctrlHand[h];pb.visible=false;if(!c)continue;
-     const o=worldPos(c,tmpV).clone(),d=new THREE.Vector3(0,0,-1).applyQuaternion(c.getWorldQuaternion(new THREE.Quaternion())),ub=uiHover[h];
-     let fxOn=false;if(ub){const bp=ub.getWorldPosition(new THREE.Vector3());pb.position.copy(o).addScaledVector(d,Math.max(.05,bp.clone().sub(o).dot(d)-.05));pb.visible=true;fxOn=true}
-     else if(new THREE.Ray(o,d).intersectPlane(_plane,_hit)){const lp=wheel.worldToLocal(_hit.clone());if(Math.hypot(lp.x,lp.y)<1.3){pb.position.copy(wheel.localToWorld(new THREE.Vector3(lp.x,lp.y,0)));pb.visible=true;for(const m of emojiMeshes)if(Math.hypot(lp.x-m.userData.home.x,lp.y-m.userData.home.y)<.048){fxOn=true;break}}}
-     if(pb.visible)ptrFx(pb,fxOn,t);else pb.userData.glow.material.opacity=0}}
+   if(inXR){}
    else{ptrBalls.left.visible=ptrBalls.right.visible=ptrBalls.desktop.visible=false;
 
     let on=false;if(aim){for(const m of emojiMeshes)if(Math.hypot(aim.x-m.userData.home.x,aim.y-m.userData.home.y)<.048){on=true;break}}
@@ -1311,6 +1307,11 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
 
  {const bNow=!!(L.bBtn||R.bBtn);if(bNow&&!prevB&&inXR&&wheelOpen&&!listening&&!kb){cancelWheel();haptic('left',.3,25);haptic('right',.3,25)}prevB=bNow}
  prevH.left.trigger=L.trigger;prevH.left.squeeze=L.squeeze;prevH.right.trigger=R.trigger;prevH.right.squeeze=R.squeeze;
+ {const TOPB=['⚙️','📷','?'];ptrBalls.desktop.visible=false;
+  for(const h of['left','right']){const pb=ptrBalls[h],c=ctrlHand[h],ub=inXR?uiHover[h]:null;pb.visible=false;
+   if(c&&ub&&TOPB.indexOf(ub.userData.btn)>=0){const o=worldPos(c,tmpV).clone(),d=new THREE.Vector3(0,0,-1).applyQuaternion(c.getWorldQuaternion(new THREE.Quaternion())),bp=ub.getWorldPosition(new THREE.Vector3());
+    pb.position.copy(o).addScaledVector(d,Math.max(.05,bp.clone().sub(o).dot(d)-.03));pb.visible=true;ptrFx(pb,true,t)}
+   else pb.userData.glow.material.opacity=0}}
  updateFairy(dt,t);
  try{updateFace(dt,t)}catch(e){if(!updateFace.w){updateFace.w=1;console.warn('[face]',e)}}
 
