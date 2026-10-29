@@ -179,7 +179,7 @@ const rig=new THREE.Group();rig.position.set(0,0,-1.9);scene.add(rig);rig.add(ca
 scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,.75));
 
 for(const x of[-2.5,2.5]){const sp=new THREE.SpotLight(0xffffff,1.1,0,Math.PI/2.6,.7,0);sp.position.set(x,3.9,0);sp.target.position.set(x*.6,0,0);scene.add(sp,sp.target);
- sp.castShadow=true;sp.shadow.mapSize.set(1024,1024);sp.shadow.camera.near=.5;sp.shadow.camera.far=8;sp.shadow.bias=-.0004;sp.shadow.normalBias=.02;sp.shadow.radius=4}
+ sp.castShadow=true;sp.shadow.mapSize.set(2048,2048);sp.shadow.camera.near=.5;sp.shadow.camera.far=8;sp.shadow.bias=-.0004;sp.shadow.normalBias=.02;sp.shadow.radius=4}
 const pmrem=new THREE.PMREMGenerator(renderer);
 
 {
@@ -191,7 +191,7 @@ const pmrem=new THREE.PMREMGenerator(renderer);
  for(const x of[-2.5,2.5]){const p=new THREE.Mesh(new THREE.BoxGeometry(2,.06,.7),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.4}));p.position.set(x,3.95,0);scene.add(p);arHide.push(p)}
 }
 
-const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1024,textureHeight:1024,color:0xcfd8dc});
+const mirror=new Reflector(new THREE.PlaneGeometry(2.4,2.6),{textureWidth:1536,textureHeight:1536,color:0xcfd8dc});
 mirror.position.set(0,1.55,-4.94);scene.add(mirror);arHide.push(mirror);
 
 let inMirror=false;
@@ -207,8 +207,8 @@ let inMirror=false;
 const MAXA=renderer.capabilities.getMaxAnisotropy();
 const emojiTexCache=new Map();
 
-function emojiTexture(e,res=256){const key=e+'@'+res;if(emojiTexCache.has(key))return emojiTexCache.get(key);const cv=document.createElement('canvas');cv.width=cv.height=res;const g=cv.getContext('2d');g.font=(res*.75)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,res/2,res*.547);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=MAXA;emojiTexCache.set(key,t);return t}
-function emojiPlane(e,s=.06,res=256){const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s),new THREE.MeshBasicMaterial({map:emojiTexture(e,res),transparent:true,alphaTest:.05,side:THREE.DoubleSide}));m.userData.emoji=e;return m}
+function emojiTexture(e,res=384){const key=e+'@'+res;if(emojiTexCache.has(key))return emojiTexCache.get(key);const cv=document.createElement('canvas');cv.width=cv.height=res;const g=cv.getContext('2d');g.font=(res*.75)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,res/2,res*.547);const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=MAXA;emojiTexCache.set(key,t);return t}
+function emojiPlane(e,s=.06,res=384){const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s),new THREE.MeshBasicMaterial({map:emojiTexture(e,res),transparent:true,alphaTest:.05,side:THREE.DoubleSide}));m.userData.emoji=e;return m}
 function makeLabel(text,w=.6,h=.15){const cv=document.createElement('canvas');cv.width=512;cv.height=128;const g=cv.getContext('2d');g.fillStyle='#111';g.font='700 84px system-ui';g.textAlign='center';g.fillText(text,256,88);const t=new THREE.CanvasTexture(cv);const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.DoubleSide}));return m}
 function textPanel(w,h,lw=1024,lh=384,k=2){const cv=document.createElement('canvas');cv.width=lw*k;cv.height=lh*k;cv.getContext('2d').scale(k,k);const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=MAXA;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));
  m.userData.draw=(title,body)=>{const g=cv.getContext('2d');g.clearRect(0,0,lw,lh);g.fillStyle='rgba(255,255,255,.96)';g.beginPath();g.roundRect(0,0,lw,lh,36);g.fill();g.strokeStyle='#111';g.lineWidth=6;g.stroke();g.fillStyle='#111';g.font='700 44px system-ui';g.fillText(title,36,62);g.font='40px system-ui';const words=(body||'').split(/\s+/);let line='',y=130;for(const wd of words){if(g.measureText(line+wd).width>lw-84){g.fillText(line,36,y);y+=52;line=''}line+=wd+' ';if(y>lh-44)break}g.fillText(line,36,y);tex.needsUpdate=true};return m}
@@ -405,8 +405,8 @@ function applyBallEmerge(){const e=ballEmerge(),u=ball.userData,bs=u.baseSc||1,b
  ballShadow.visible=full&&(u.lift||0)>0;core.visible=full;for(const a of arcs)if(!full)a.visible=false}
 const CLOSE_COLLAPSE=.32,CLOSE_FLY=.7;let closeT=0;const _bf0=new THREE.Vector3(),_bf1=new THREE.Vector3();let ballFlying=false,ballFlyS0=1;
 function resetClose(){closeT=0;ballFlying=false;if(ball.parent!==wheel)wheel.add(ball);tracer.visible=false;restoreSpawnHidden();
- for(const g of[ring,ringGlow,ringGlow2,disc,spokeLines,wheelTitle,searchBtn,seqStrip,aimDot])if(g)g.scale.setScalar(1);
- wheelTitle.position.set(0,.185,.02);searchBtn.position.set(SEARCH_P.x,SEARCH_P.y,.012);seqStrip.position.set(0,-.46,.015);
+ for(const g of[ring,ringGlow,ringGlow2,disc,spokeLines,wheelTitle,searchBtn,backBtn,seqStrip,aimDot])if(g)g.scale.setScalar(1);
+ wheelTitle.position.set(0,.185,.02);searchBtn.position.set(SEARCH_P.x,SEARCH_P.y,.012);backBtn.position.set(BACK_P.x,BACK_P.y,.012);seqStrip.position.set(0,-.46,.015);
  ring.material.opacity=1;for(const m of emojiMeshes){m.visible=true;m.scale.setScalar(1);m.position.copy(m.userData.home)}
  ball.material.opacity=1;ball.material.transparent=false;ball.visible=true;ball.scale.setScalar(1)}
 function startClose(){sfxWhoosh(false);wheelClosing=true;closeT=0;spawnT=SPAWN_TRACE+SPAWN_POP+BALL_T+1;closeBase=wheel.scale.x/spawnScale();
@@ -416,8 +416,8 @@ function runClosing(dt){
  closeT+=dt;wheel.scale.setScalar(closeBase);wheel.updateMatrixWorld(true);
  const c=Math.min(1,closeT/CLOSE_COLLAPSE),k=c*c*(3-2*c),sIn=Math.max(.0001,1-k),f=Math.min(1,Math.max(0,(closeT-CLOSE_COLLAPSE)/CLOSE_FLY)),e=f*f;
  if(f>=1){wheelClosing=false;wheel.visible=false;resetClose();try{exitSearch()}catch(_){}return}
- for(const g of[ring,ringGlow,ringGlow2,disc,spokeLines,wheelTitle,searchBtn,seqStrip,aimDot])if(g)g.scale.setScalar(sIn);
- wheelTitle.position.set(0,.185*sIn,.02);searchBtn.position.set(SEARCH_P.x*sIn,SEARCH_P.y*sIn,.012);seqStrip.position.set(0,-.46*sIn,.015);
+ for(const g of[ring,ringGlow,ringGlow2,disc,spokeLines,wheelTitle,searchBtn,backBtn,seqStrip,aimDot])if(g)g.scale.setScalar(sIn);
+ wheelTitle.position.set(0,.185*sIn,.02);searchBtn.position.set(SEARCH_P.x*sIn,SEARCH_P.y*sIn,.012);backBtn.position.set(BACK_P.x*sIn,BACK_P.y*sIn,.012);seqStrip.position.set(0,-.46*sIn,.015);
  for(const m of emojiMeshes){m.visible=true;m.position.set(m.userData.home.x*sIn,m.userData.home.y*sIn,m.userData.home.z);m.scale.setScalar(sIn)}
  ballShadow.visible=false;core.visible=false;for(const a of arcs)a.visible=false;
  const bs=ball.userData.baseSc||1,pulse=1+.3*Math.sin(Math.PI*Math.min(1,c));
@@ -483,6 +483,21 @@ const searchBtn=(()=>{const lw=600,lh=100,cv=document.createElement('canvas');cv
   tex.needsUpdate=true};
  m.userData.draw('',false,false);return m})();
 wheel.add(searchBtn);
+const BACK_P=new THREE.Vector2(0,-.19),BACK_HW=.065,BACK_HH=.03;
+const backBtn=(()=>{const lw=260,lh=120,k=4,cv=document.createElement('canvas');cv.width=lw*k;cv.height=lh*k;const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=MAXA;
+ const m=new THREE.Mesh(new THREE.PlaneGeometry(BACK_HW*2,BACK_HH*2),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));m.position.set(BACK_P.x,BACK_P.y,.012);m.renderOrder=2;m.userData.last=null;
+ m.userData.draw=(hot,enabled)=>{const key=hot+'|'+enabled;if(key===m.userData.last)return;m.userData.last=key;
+  const g=cv.getContext('2d');g.setTransform(k,0,0,k,0,0);g.clearRect(0,0,lw,lh);
+  g.fillStyle=hot&&enabled?'rgba(255,90,90,.28)':'rgba(255,255,255,.07)';g.beginPath();g.roundRect(4,6,lw-8,lh-12,48);g.fill();
+  g.lineWidth=3;g.strokeStyle=hot&&enabled?'rgba(255,110,110,.95)':'rgba(255,211,77,.35)';g.stroke();
+  g.globalAlpha=enabled?1:.35;g.fillStyle=hot&&enabled?'#ff4b4b':'#e02828';g.strokeStyle='#e02828';g.lineJoin='round';g.lineCap='round';
+  /* backwards (left-pointing) red arrow */
+  g.beginPath();g.moveTo(52,lh/2);g.lineTo(100,lh/2-30);g.lineTo(100,lh/2-13);g.lineTo(208,lh/2-13);g.lineTo(208,lh/2+13);g.lineTo(100,lh/2+13);g.lineTo(100,lh/2+30);g.closePath();g.fill();g.lineWidth=6;g.stroke();
+  g.globalAlpha=1;tex.needsUpdate=true};
+ m.userData.draw(false,false);return m})();
+wheel.add(backBtn);
+function backOver(a){return!!a&&Math.abs(a.x-BACK_P.x)<BACK_HW&&Math.abs(a.y-BACK_P.y)<BACK_HH*1.3}
+function deleteLastEmoji(){if(!sequence.length)return false;const e=sequence.pop();renderSeqStrip();clickedPeg=null;lockedEmoji=null;setStatus('Removed '+e+(sequence.length?' — '+sequence.join(' '):' — nothing selected.'));return true}
 const seqStrip=new THREE.Group();seqStrip.position.set(0,-.46,.015);wheel.add(seqStrip);
 let tabIndex=0,sequence=[],snapped=null,lockedEmoji=null,dwell=0,ballTarget=new THREE.Vector2(),ballPos=new THREE.Vector2(),tabCooldown=0;
 const RING_R=.335,WHEEL_R=.38;
@@ -965,7 +980,7 @@ addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;ke
  if(e.code==='Space'){e.preventDefault();if(!e.repeat&&rig.position.y<=.001&&jumpV===0)jumpV=3.4}if(wheelOpen&&e.code==='ArrowLeft')setTab(tabIndex-1);if(wheelOpen&&e.code==='ArrowRight')setTab(tabIndex+1);if(e.code==='KeyQ')setTab(tabIndex-1);if(e.code==='KeyE')setTab(tabIndex+1);if(e.code==='KeyV'&&!e.repeat)startListening();if(e.code==='Escape')breakSentence()});
 addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyL'){kbHeldL=false;if(pendingWheel.desktop){pendingWheel.desktop=0;if(!listening&&!kb){if(wheelOpen&&wheelHand==='desktop')closeWheelAndSend();else if(!wheelOpen)openWheel('desktop')}}else if(listening&&deskLVoice&&!renderer.xr.isPresenting){deskLVoice=false;releaseVoice()}}if(e.code==='KeyV')releaseVoice()});
 let yaw=0,pitch=0,dragging=false,lx=0,ly=0;
-canvas.addEventListener('pointerdown',e=>{if(wheelOpen&&wheelHand==='desktop'){mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1));if(searchOver(mouseN)){startSearch('desktop');return}
+canvas.addEventListener('pointerdown',e=>{if(wheelOpen&&wheelHand==='desktop'){mouseN.set((e.clientX/innerWidth)*2-1,-((e.clientY/innerHeight)*2-1));if(searchOver(mouseN)){startSearch('desktop');return}{const l=wheelLayout();if(backOver({x:(mouseN.x*l.halfW-l.xOff)/l.sc,y:(mouseN.y*l.halfH-l.yOff)/l.sc})){deleteLastEmoji();return}}
   {const l=wheelLayout(),ax=(mouseN.x*l.halfW-l.xOff)/l.sc,ay=(mouseN.y*l.halfH-l.yOff)/l.sc;if(Math.hypot(ax,ay)>WHEEL_R+.04){closeWheelAndSend();return}}
   mouseDown=true;return}dragging=true;lx=e.clientX;ly=e.clientY});
 addEventListener('pointerup',()=>{dragging=false;mouseDown=false});
@@ -1053,7 +1068,7 @@ async function enterXR(kind){startLipSync();if(!navigator.xr){
   const ok=await navigator.xr.isSessionSupported(mode);if(!ok){setStatus((kind==='ar'?'Immersive AR (passthrough)':'Immersive VR')+' not supported on this device/browser.');return false}
   let gotCam=false;if(mode==='immersive-ar')gotCam=await startSnapCam();
   const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','camera-access','face-tracking','eye-tracking']});
-  renderer.xr.setFramebufferScaleFactor(1.0);renderer.xr.setFoveation(0);
+  renderer.xr.setFramebufferScaleFactor(1.5);renderer.xr.setFoveation(0);
   xrSessionMode=mode;session.addEventListener('end',()=>{xrSessionMode=null;applyARMode(false);stopSnapCam();$('vrBtn').textContent='Enter VR'});
   await renderer.xr.setSession(session);applyARMode(kind==='ar');$(kind==='ar'?'arBtn':'vrBtn').textContent=kind==='ar'?'📷 In AR — real world':'In VR — use controllers';return true}catch(e){setStatus('Could not start '+(kind==='ar'?'AR':'VR')+': '+e.message+(kind==='ar'&&arSnapStream?' — camera was just allowed; tap 📷 AR Mode once more.':''));return false}}
 let xrSwitching=false,xrSessionMode=null;
@@ -1730,20 +1745,23 @@ function animate(){renderer.setAnimationLoop((time,frame)=>{if(frame)lastXRFrame
   const grab=inXR?(aimHand==='left'?L:R).trigger:mouseDown;
   const hover=!!aim&&Math.hypot(aim.x-ballPos.x,aim.y-ballPos.y)<GRAB_R;
   const sHot=!!aim&&!ballHeld&&!kb&&Math.abs(aim.x-SEARCH_P.x)<SEARCH_HW&&Math.abs(aim.y-SEARCH_P.y)<SEARCH_HH*1.3;
+  const bHot=!!aim&&!ballHeld&&!kb&&!sHot&&backOver(aim);
   searchHotHand=sHot?(inXR?aimHand:'desktop'):null;
   if(sHot){const rm=inXR&&ctrlHand[aimHand]&&ctrlHand[aimHand].userData.ray;if(rm)rm.material.color.setHex(0x34e08a);
    if(grab&&!wasGrab&&!(inXR&&uiPressed[aimHand]))startSearch(inXR?aimHand:'desktop')}
   const uiAim=inXR&&(uiHover[aimHand]||uiPressed[aimHand]);
-  if(inXR&&grab&&!wasGrab&&!ballHeld&&!sHot&&!kb&&!uiAim&&aim&&Math.hypot(aim.x,aim.y)>WHEEL_R+.04){pendingOff=performance.now();pendingOffHand=aimHand}
+  if(inXR&&grab&&!wasGrab&&!ballHeld&&!sHot&&!bHot&&!kb&&!uiAim&&aim&&Math.hypot(aim.x,aim.y)>WHEEL_R+.04){pendingOff=performance.now();pendingOffHand=aimHand}
   /* off-wheel trigger: tap = close & send, hold = speak and translate to an emoji sequence */
   if(pendingOff){if(!wheelOpen||listening||kb||pendingOffHand!==aimHand){pendingOff=0}
    else if(!grab){pendingOff=0;closeWheelAndSend();haptic(aimHand,.5,40)}
    else if(performance.now()-pendingOff>=TRIGGER_HOLD_MS){pendingOff=0;holdTransHand=aimHand;startListening();if(listening){voiceHand=aimHand;haptic(aimHand,.5,40)}else holdTransHand=null}}
-  if(sHot&&!prevHot&&inXR)haptic(aimHand,.25,20);prevHot=sHot;
+  if(bHot&&grab&&!wasGrab&&!(inXR&&uiPressed[aimHand])){if(deleteLastEmoji()&&inXR)haptic(aimHand,.6,40)}
+  if((sHot||bHot)&&!prevHot&&inXR)haptic(aimHand,.25,20);prevHot=sHot||bHot;
+  backBtn.userData.draw(bHot,sequence.length>0);
   searchBtn.userData.draw(kb&&kb.kind==='search'?xrInput.value:searchQuery,!!(kb&&kb.kind==='search'),sHot);
   if(!ballHeld){
    if(grab&&!wasGrab&&hover&&!uiAim){ballHeld=true;viaStick=false;clickedPeg=null;holdOff.set(ballPos.x-aim.x,ballPos.y-aim.y)}
-   else if(grab&&!wasGrab&&aim&&!sHot&&!kb&&!uiAim){
+   else if(grab&&!wasGrab&&aim&&!sHot&&!bHot&&!kb&&!uiAim){
     let cm=null,cd=.048;for(const m of emojiMeshes){const d=Math.hypot(aim.x-m.userData.home.x,aim.y-m.userData.home.y);if(d<cd){cd=d;cm=m}}
     if(cm){selectEmoji(cm.userData.emoji);clickedPeg=cm;ballPos.set(cm.userData.home.x,cm.userData.home.y);ballTarget.copy(ballPos);if(inXR)haptic(aimHand,.7,35)}
     else if(Math.hypot(aim.x,aim.y)<=WHEEL_R+.04){wDragging=true;wGrabA={x:aim.x,y:aim.y};if(inXR){wGrabOff.copy(wheel.position).sub(worldPos(ctrlHand[aimHand],_dragHand));haptic(aimHand,.3,20)}}}}
