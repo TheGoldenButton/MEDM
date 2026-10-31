@@ -5054,7 +5054,7 @@ await (async function() {
     right: 0
   };
   let Hi = 0, Si = null, zi = !1, ji = !1;
-  const Di = new THREE.Vector2, Ai = .11, Vi = .15, qi = {
+  const Di = new THREE.Vector2, Ai = .15, Vi = .15, qi = {
     left: {
       trigger: !1,
       squeeze: !1
@@ -6221,7 +6221,7 @@ await (async function() {
       s.translate(0, -.085, 0), o2(s, t, 0, 0, 0);
       const l = o2(new THREE.SphereGeometry(.036, 16, 12), t, 0, -.205, 0);
       l.scale.set(1.12, 1.05, .62);
-      o2(new THREE.SphereGeometry(.02, 10, 8), t, .02 * -e, -.2, -.012).scale.set(1, 1.3, .8);
+      o2(new THREE.SphereGeometry(.02, 10, 8), t, .02 * -e, -.2, .012).scale.set(1, 1.3, .8);
       o2(new THREE.SphereGeometry(.033, 12, 10), t, 0, -.172, 0).scale.set(1, .7, .9);
       const seg = (parent, rad, len, tip) => {
         const g = new THREE.CapsuleGeometry(rad, len, 4, 8);
@@ -6231,11 +6231,14 @@ await (async function() {
         parent.add(m);
         return m;
       };
-      /* fingers run index -> pinky starting from the thumb side (sd = -1 right hand, +1 left hand mirrored) */      const sd = -e, L1 = [ .018, .02, .018, .014 ], L2 = [ .013, .015, .014, .011 ], KX = [ .0185, .0065, -.0062, -.0175 ], KY = [ -.226, -.23, -.227, -.219 ], fg = [];
+      /* fingers run index -> pinky starting from the thumb side (sd = -1 right hand, +1 left hand mirrored) */      /* FIX: the thumb sits on the inner side (palm faces back), so fingers must curl toward +z. Mirror the whole finger rig through z: every existing +rotation.x curl now bends the correct way. */      const fmir = new THREE.Group;
+      fmir.scale.z = -1;
+      el.add(fmir);
+      const sd = -e, L1 = [ .018, .02, .018, .014 ], L2 = [ .013, .015, .014, .011 ], KX = [ .0185, .0065, -.0062, -.0175 ], KY = [ -.226, -.23, -.227, -.219 ], fg = [];
       for (let e2 = 0; e2 < 4; e2++) {
         const rd = .0082 - 4e-4 * Math.abs(e2 - 1.5), arc = Math.abs(e2 - 1.5), k1 = new THREE.Group;
         k1.position.set(sd * KX[e2], KY[e2], -.004 - .0022 * arc);
-        el.add(k1);
+        fmir.add(k1);
         seg(k1, rd, L1[e2]);
         const k2 = new THREE.Group;
         k2.position.y = -(L1[e2] + 2 * rd * .92);
@@ -6254,7 +6257,7 @@ await (async function() {
       thm.position.set(.028 * -e, -.2, -.012);
       thm.rotation.set(.25, .35 * e, .6 * -e);
       thm.userData.baseX = .25;
-      el.add(thm);
+      fmir.add(thm);
       seg(thm, .0098, .013);
       const th2 = new THREE.Group;
       th2.position.y = -.031;
@@ -7657,7 +7660,7 @@ await (async function() {
           const e = i && Ee[t] && Ee[t].userData.ray;
           e && e.material.color.setHex(3465354), !c || di || i && Vs[t] || $s(i ? t : "desktop");
         }
-        const u = i && (s[t] || Vs[t]);
+        const u = i && !h && (s[t] || Vs[t]);
         if (i && c && !di && !ui && !d && !p && !Ks && !u && e && Math.hypot(e.x, e.y) > .42 && (Hi = performance.now(), 
         Si = t), Hi && (!ni || Xa || Ks || Si !== t ? Hi = 0 : c ? performance.now() - Hi >= ki && (Hi = 0, 
         Ri = t, vr(), Xa ? (ii = t, xe(t, .5, 40)) : Ri = null) : (Hi = 0, Pi(), xe(t, .5, 40))), 
