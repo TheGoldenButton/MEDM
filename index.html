@@ -4052,7 +4052,6 @@ await (async function() {
     Qo = Fo.length > 0, Qo && !r && v("📐 Room scan found " + Fo.length + " wall" + (1 === Fo.length ? "" : "s") + " — Spark and the avatar will stay inside your real room.");
     rfScan();
   }
-  /* NOTE: shadowed by a later `function ms` (the arm-pose helper), so this room-mesh scan is currently never called */  
   /* ---- room / environment bounds for avatars & rig (added) ---- */
   function rfEnv(p, r) {
     let hit = !1;
@@ -4383,7 +4382,7 @@ await (async function() {
       const e = nn.length(), t = on.length();
       e > .1 && t > .1 && on.dot(nn) / (e * t) > .55 && e < 4.5 ? (Cn.copy(In), On = !0) : On = !1;
     }
-    Qn(!1), vn.from.copy(Rn.position), vn.s0 = Math.max(.2, Rn.scale.x), vn.mode = "emerge", 
+    Qn(!1), vn.from.copy(Rn.position), vn.s0 = Math.max(.2, Rn.scale.x), vn.mode = "emerge", vn.ea = .14 + .12 * Math.random(), vn.ep = .8 + .8 * Math.random(), vn.sw = (Math.random() < .5 ? -1 : 1) * (.05 + .3 * Math.random()), vn.lift = .06 + .16 * Math.random(), vn.spin = (Math.random() < .5 ? -1 : 1) * (1 + 3 * Math.random()), 
     vn.t0 = performance.now(), jn.position.copy(Rn.position), jn.scale.setScalar(.05), 
     jn.visible = !0, Bn.visible = !1;
   }
@@ -4394,9 +4393,9 @@ await (async function() {
     const e = vn.mode;
     if ("hidden" !== e && "return" !== e && "orbfade" !== e) {
       if ("orb" === e || "orbthink" === e) {
-        return vn.s0 = Rn.scale.x, vn.mode = "orbfade", void (vn.t0 = performance.now());
+        return vn.s0 = Rn.scale.x, vn.mode = "orbfade", vn.fd = 300 + 260 * Math.random(), vn.fp = .8 + .9 * Math.random(), void (vn.t0 = performance.now());
       }
-      vn.hasAnswer = !1, vn.mode = "return", vn.t0 = performance.now(), vn.from.copy(jn.position);
+      vn.hasAnswer = !1, vn.sn = 0, vn.mode = "return", vn.rd = 360 + 300 * Math.random(), vn.rf = Math.random() < .3, vn.rg = .15 + .4 * Math.random(), vn.rp = .9 + .8 * Math.random(), vn.t0 = performance.now(), vn.from.copy(jn.position);
     }
   }
   function $n(e) {
@@ -4408,7 +4407,7 @@ await (async function() {
       o.userData.j = a, o.userData.n = e.length, o.frustumCulled = !1, o.onBeforeRender = function(e, t, o) {
         const n = this.parent;
         ha.setFromMatrixPosition(o.matrixWorld);
-        const r = Math.atan2(ha.x - n.position.x, ha.z - n.position.z), i = U ? -1 : 1, s = this.userData, l = Math.floor(s.j / 4), c = Math.ceil(s.n / 4), h = Math.min(4, s.n - 4 * l), d = .19 * (s.j - 4 * l - (h - 1) / 2) * So * i, p = .19 * (c - 1 - l) * So + .02 * So, u = (.3 + .7 * Math.min(1, Math.max(0, (performance.now() - vn.answerUntil + 8e3 - 160 * a) / 180))) * So;
+        const r = Math.atan2(ha.x - n.position.x, ha.z - n.position.z), i = U ? -1 : 1, s = this.userData, l = Math.floor(s.j / 4), c = Math.ceil(s.n / 4), h = Math.min(4, s.n - 4 * l), d = .19 * (s.j - 4 * l - (h - 1) / 2) * So * i, p = .19 * (c - 1 - l) * So + .02 * So, u = (.001 + .999 * Math.min(1, Math.max(0, (performance.now() - vn.answerUntil + 8e3 - 160 * a - 400) / 180))) * So;
         this.position.set(Math.cos(r) * d, p, -Math.sin(r) * d), this.rotation.set(0, r, 0), 
         this.scale.set(i * u, u, u), this.updateMatrix(), this.matrixWorld.multiplyMatrices(n.matrixWorld, this.matrix);
       }, Bn.add(o), Wn.push(o);
@@ -4452,35 +4451,737 @@ await (async function() {
       e.scale.setScalar((.07 - .035 * n) * i), e.material.opacity = .95 * i * r, e.visible = !0;
     });
   }
+  /* ===== Spark orb energy: compress in, electric thinking, explosive exits (every instance randomised) ===== */
+  const EF = (() => {
+    const NP = 120, SEG = 10, NA = 9, NB = 420, NR = 5, NL = 10, rnd = Math.random, pick = a => a[rnd() * a.length | 0];
+    const MOTE = [ [ 1, .92, .66 ], [ 1, 1, 1 ], [ .75, .9, 1 ], [ 1, .78, .7 ], [ .8, 1, .85 ] ];
+    const BP = [ [ [ 1, .9, .5 ], [ 1, .7, .25 ], [ 1, 1, .9 ] ], [ [ .5, .8, 1 ], [ .8, .95, 1 ], [ 1, 1, 1 ] ], [ [ .85, .55, 1 ], [ 1, .6, .9 ], [ 1, .9, 1 ] ], [ [ .6, 1, .8 ], [ .9, 1, .7 ], [ 1, 1, 1 ] ], [ [ 1, .55, .35 ], [ 1, .85, .4 ], [ 1, 1, .8 ] ] ];
+    const CORE = [ [ 14937343, 8438015, 12575999, 10473727, 13166847 ], [ 15138811, 7340000, 12582894, 10485728, 12123124 ], [ 15787775, 11046143, 14206152, 12562600, 13845714 ], [ 15400940, 9437082, 13631444, 11534260, 13631448 ] ];
+    const E = {
+      T: 1150,
+      kick: 0,
+      glow: 1,
+      flash: 0,
+      light: 0,
+      el: 0,
+      on: !1,
+      next: 0,
+      jit: 0,
+      bf: 0,
+      bl: 0,
+      popped: !1,
+      formKey: -1,
+      emKey: -1,
+      fdKey: -1
+    };
+    const V = {
+      T: 1150,
+      np: NP,
+      rad: 1,
+      sw: 1,
+      halo: 1,
+      flash: .5,
+      sMin: .09,
+      sSpan: .3,
+      dbl: .3,
+      big: .15,
+      kmul: 1,
+      arcLen: 1,
+      nArcs: NA,
+      arc: 13166847
+    };
+    /* ---- formation motes ---- */
+    const grp = new THREE.Group;
+    grp.visible = !1;
+    G.add(grp);
+    const pos = new Float32Array(3 * NP), dir = new Float32Array(3 * NP), R0 = new Float32Array(NP), DL = new Float32Array(NP), SW = new Float32Array(NP);
+    for (let i = 0; i < NP; i++) {
+      const u = 2 * rnd() - 1, th = 6.2832 * rnd(), sq = Math.sqrt(1 - u * u);
+      dir.set([ sq * Math.cos(th), u, sq * Math.sin(th) ], 3 * i);
+      R0[i] = .28 + .36 * rnd();
+      DL[i] = .4 * rnd();
+      SW[i] = 1.5 + 2.5 * rnd();
+    }
+    const pg = new THREE.BufferGeometry;
+    pg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const pm = new THREE.PointsMaterial({
+      color: 16772776,
+      size: .024,
+      map: Mn,
+      transparent: !0,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: !1
+    });
+    const pts = new THREE.Points(pg, pm);
+    pts.frustumCulled = !1;
+    grp.add(pts);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: Mn,
+      transparent: !0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: !1,
+      opacity: 0
+    }));
+    halo.frustumCulled = !1;
+    grp.add(halo);
+    /* ---- electric arcs inside the orb ---- */
+    const arcs = [];
+    for (let i = 0; i < NA; i++) {
+      const g = new THREE.BufferGeometry;
+      g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(3 * (SEG + 1)), 3));
+      const ln = new THREE.Line(g, new THREE.LineBasicMaterial({
+        color: 13166847,
+        transparent: !0,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: !1,
+        depthTest: !1
+      }));
+      ln.frustumCulled = !1;
+      ln.renderOrder = 12;
+      ln.visible = !1;
+      Rn.add(ln);
+      arcs.push(ln);
+    }
+    const A = new THREE.Vector3, B = new THREE.Vector3, Pv = new THREE.Vector3, bAx = new THREE.Vector3, bD = new THREE.Vector3, bT = new THREE.Vector3;
+    const randDir = v => {
+      const u = 2 * rnd() - 1, th = 6.2832 * rnd(), sq = Math.sqrt(1 - u * u);
+      return v.set(sq * Math.cos(th), u, sq * Math.sin(th));
+    };
+    function shape(ln) {
+      const arr = ln.geometry.attributes.position.array;
+      ln.material.color.setHex(rnd() < .5 ? V.arc : rnd() < .5 ? 16777215 : V.arc);
+      randDir(A);
+      if (rnd() < .3) {
+        randDir(B);
+        B.lerp(A, .35 + .35 * rnd()).normalize();
+        const R = (.075 + .02 * rnd()) * (.85 + .15 * V.arcLen);
+        for (let i = 0; i <= SEG; i++) {
+          const t = i / SEG, j = i > 0 && i < SEG ? .014 : 0;
+          Pv.copy(A).lerp(B, t).normalize().multiplyScalar(R * (1 + .25 * Math.sin(Math.PI * t)));
+          arr[3 * i] = Pv.x + (rnd() - .5) * j;
+          arr[3 * i + 1] = Pv.y + (rnd() - .5) * j;
+          arr[3 * i + 2] = Pv.z + (rnd() - .5) * j;
+        }
+      } else {
+        const L = (.1 + .13 * rnd()) * V.arcLen;
+        for (let i = 0; i <= SEG; i++) {
+          const t = i / SEG, r = .03 + (L - .03) * t, j = i > 0 ? .024 * Math.sin(Math.PI * Math.min(1, t * 1.1)) + .004 : 0;
+          arr[3 * i] = A.x * r + (rnd() - .5) * j;
+          arr[3 * i + 1] = A.y * r + (rnd() - .5) * j;
+          arr[3 * i + 2] = A.z * r + (rnd() - .5) * j;
+        }
+      }
+      ln.geometry.attributes.position.needsUpdate = !0;
+    }
+    const cH0 = Hn.material.color.clone(), cH1 = new THREE.Color(14937343), cX0 = xn.material.color.clone(), cX1 = new THREE.Color(8438015), cS0 = Sn.material.color.clone(), cS1 = new THREE.Color(12575999), cZ0 = zn.color.clone(), cZ1 = new THREE.Color(10473727);
+    function vary() {
+      V.T = 900 + 700 * rnd();
+      E.T = V.T;
+      V.np = 70 + (rnd() * 50 | 0);
+      pg.setDrawRange(0, V.np);
+      V.rad = .8 + .8 * rnd();
+      V.sw = (rnd() < .5 ? -1 : 1) * (.4 + 1.3 * rnd());
+      V.halo = .8 + .7 * rnd();
+      V.flash = .3 + .5 * rnd();
+      V.sMin = .06 + .1 * rnd();
+      V.sSpan = .15 + .35 * rnd();
+      V.dbl = .2 + .25 * rnd();
+      V.big = .08 + .14 * rnd();
+      V.kmul = .7 + .7 * rnd();
+      V.arcLen = .8 + .7 * rnd();
+      V.nArcs = 5 + (rnd() * 5 | 0);
+      const m = pick(MOTE);
+      pm.color.setRGB(m[0], m[1], m[2]);
+      pm.size = .015 + .017 * rnd();
+      halo.material.color.setRGB(m[0], m[1], m[2]);
+      const c = pick(CORE);
+      cH1.setHex(c[0]);
+      cX1.setHex(c[1]);
+      cS1.setHex(c[2]);
+      cZ1.setHex(c[3]);
+      V.arc = c[4];
+      for (let i = 0; i < NA; i++) {
+        shape(arcs[i]);
+      }
+    }
+    vary();
+    /* ---- world-space bursts: sparks, rings, flash, bolts, light ---- */
+    const bpos = new Float32Array(3 * NB), bcolA = new Float32Array(3 * NB), bvel = new Float32Array(3 * NB), bbase = new Float32Array(3 * NB), blife = new Float32Array(NB), bmax = new Float32Array(NB).fill(1), bdrag = new Float32Array(NB), bgrav = new Float32Array(NB);
+    for (let i = 0; i < NB; i++) {
+      bpos[3 * i + 1] = -99;
+    }
+    const bg = new THREE.BufferGeometry;
+    bg.setAttribute("position", new THREE.BufferAttribute(bpos, 3));
+    bg.setAttribute("color", new THREE.BufferAttribute(bcolA, 3));
+    const mkPts = sz => {
+      const p = new THREE.Points(bg, new THREE.PointsMaterial({
+        size: sz,
+        map: Mn,
+        vertexColors: !0,
+        transparent: !0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: !1
+      }));
+      p.frustumCulled = !1;
+      G.add(p);
+      return p;
+    };
+    const bigPts = mkPts(.05), smallPts = mkPts(.016);
+    let ci = 0;
+    function spawn(x, y, z, vx, vy, vz, life, r, g, b, drag, grav) {
+      const i = ci;
+      ci = (ci + 1) % NB;
+      bpos[3 * i] = x;
+      bpos[3 * i + 1] = y;
+      bpos[3 * i + 2] = z;
+      bvel[3 * i] = vx;
+      bvel[3 * i + 1] = vy;
+      bvel[3 * i + 2] = vz;
+      blife[i] = bmax[i] = life;
+      bbase[3 * i] = r;
+      bbase[3 * i + 1] = g;
+      bbase[3 * i + 2] = b;
+      bdrag[i] = drag;
+      bgrav[i] = grav;
+    }
+    const ringTex = (() => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 128;
+      const g = c.getContext("2d"), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      gr.addColorStop(0, "rgba(255,255,255,0)");
+      gr.addColorStop(.62, "rgba(255,255,255,0)");
+      gr.addColorStop(.8, "rgba(255,255,255,1)");
+      gr.addColorStop(.9, "rgba(255,255,255,.35)");
+      gr.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 128, 128);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    })();
+    const rings = [];
+    for (let i = 0; i < NR; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: ringTex,
+        transparent: !0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: !1,
+        opacity: 0
+      }));
+      s.visible = !1;
+      s.frustumCulled = !1;
+      G.add(s);
+      rings.push({
+        s: s,
+        life: 0,
+        max: 1,
+        r1: 1,
+        delay: 0
+      });
+    }
+    const flashS = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: Mn,
+      transparent: !0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: !1,
+      opacity: 0
+    }));
+    flashS.visible = !1;
+    flashS.frustumCulled = !1;
+    G.add(flashS);
+    const fl = {
+      life: 0,
+      max: 1,
+      s1: 1
+    };
+    const blight = new THREE.PointLight(16764016, 0, 4, 1.6);
+    G.add(blight);
+    const bolts = [];
+    for (let i = 0; i < NL; i++) {
+      const g = new THREE.BufferGeometry;
+      g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(3 * (SEG + 2)), 3));
+      const ln = new THREE.Line(g, new THREE.LineBasicMaterial({
+        color: 16777215,
+        transparent: !0,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: !1
+      }));
+      ln.frustumCulled = !1;
+      ln.visible = !1;
+      G.add(ln);
+      bolts.push({
+        l: ln,
+        o: new THREE.Vector3,
+        d: new THREE.Vector3,
+        len: 0,
+        life: 0,
+        max: 1,
+        jt: 0
+      });
+    }
+    function boltPts(b) {
+      const arr = b.l.geometry.attributes.position.array, age = 1 - b.life / b.max, gr = 1 - Math.pow(1 - Math.min(1, age / .28), 3), len = b.len * gr, amp = .07 * b.len;
+      bT.set(-b.d.z, 0, b.d.x).normalize();
+      for (let i = 0; i <= SEG; i++) {
+        const t = i / SEG, j = i > 0 ? amp * Math.sin(Math.PI * Math.min(1, t * 1.05)) : 0;
+        arr[3 * i] = b.o.x + b.d.x * len * t + (rnd() - .5) * j * 2;
+        arr[3 * i + 1] = b.o.y + b.d.y * len * t + (rnd() - .5) * j * 2;
+        arr[3 * i + 2] = b.o.z + b.d.z * len * t + (rnd() - .5) * j * 2;
+      }
+      b.l.geometry.attributes.position.needsUpdate = !0;
+    }
+    function sfx(pw) {
+      try {
+        const c = Wr();
+        if (!c) {
+          return;
+        }
+        const t0 = c.currentTime, len = .3 + .45 * rnd(), nb = c.createBuffer(1, Math.floor(c.sampleRate * len), c.sampleRate), d = nb.getChannelData(0);
+        for (let i = 0; i < d.length; i++) {
+          d[i] = (2 * rnd() - 1) * Math.pow(1 - i / d.length, 2.2);
+        }
+        const src = c.createBufferSource();
+        src.buffer = nb;
+        const f = c.createBiquadFilter();
+        f.type = "bandpass";
+        f.Q.value = .5 + 3 * rnd();
+        f.frequency.setValueAtTime(2500 + 4e3 * rnd(), t0);
+        f.frequency.exponentialRampToValueAtTime(250 + 450 * rnd(), t0 + len);
+        const g = c.createGain();
+        g.gain.value = .045 * Math.min(1.6, pw);
+        src.connect(f);
+        f.connect(g);
+        g.connect(c.destination);
+        src.start(t0);
+        const n = 3 + (rnd() * 5 | 0), base = 700 + 900 * rnd();
+        for (let i = 0; i < n; i++) {
+          const o = c.createOscillator(), og = c.createGain(), st = t0 + i * (.03 + .05 * rnd()), dur = .25 + .35 * rnd();
+          o.type = "sine";
+          o.frequency.value = base * Math.pow(2, Math.floor(10 * rnd()) / 12) * (rnd() < .3 ? 2 : 1);
+          og.gain.setValueAtTime(1e-4, st);
+          og.gain.exponentialRampToValueAtTime(.012 * Math.min(1.4, pw), st + .01);
+          og.gain.exponentialRampToValueAtTime(1e-4, st + dur);
+          o.connect(og);
+          og.connect(c.destination);
+          o.start(st);
+          o.stop(st + dur + .02);
+        }
+      } catch (e) {}
+    }
+    function burst(p, pw, o) {
+      pw = pw || 1;
+      o = o || {};
+      const pal = pick(BP), q = rnd(), style = o.style != null ? o.style : q < .4 ? 0 : q < .6 ? 1 : q < .78 ? 2 : 3;
+      const n = Math.min(NB - 20, Math.floor((60 + 110 * rnd()) * pw)), sp0 = (.6 + 1.1 * rnd()) * (.75 + .45 * pw), drag = .9 + 2.4 * rnd(), grav = (rnd() - .65) * .9, lf = .55 + .9 * rnd(), swirl = .8 + 1.2 * rnd();
+      randDir(bAx);
+      bigPts.material.size = .035 + .04 * rnd();
+      smallPts.material.size = .01 + .012 * rnd();
+      for (let k = 0; k < n; k++) {
+        randDir(bD);
+        let sp = sp0 * (.2 + .8 * Math.pow(rnd(), .6));
+        if (1 === style) {
+          bD.addScaledVector(bAx, -bD.dot(bAx)).addScaledVector(bAx, .25 * (rnd() - .5)).normalize();
+        } else if (2 === style) {
+          bD.multiplyScalar(.35 * rnd()).addScaledVector(bAx, rnd() < .5 ? 1 : -1).normalize();
+          sp *= 1.25;
+        }
+        bT.copy(bD).multiplyScalar(sp);
+        if (3 === style) {
+          bT.addScaledVector(bAx.clone().cross(bD), sp * swirl);
+        }
+        const c = pal[rnd() * pal.length | 0], br = .55 + .45 * rnd(), l = lf * (.6 + .8 * rnd());
+        spawn(p.x + .03 * bD.x, p.y + .03 * bD.y, p.z + .03 * bD.z, bT.x, bT.y, bT.z, l, c[0] * br, c[1] * br, c[2] * br, drag * (.7 + .6 * rnd()), grav);
+      }
+      const nr = 1 + (rnd() * (pw > 1.2 ? 3 : 2) | 0);
+      for (let i = 0; i < nr; i++) {
+        const r = rings[i];
+        r.life = r.max = .45 + .5 * rnd();
+        r.r1 = (.5 + .9 * rnd()) * (.7 + .5 * pw);
+        r.delay = i * (.05 + .1 * rnd());
+        r.s.position.copy(p);
+        const c = pal[rnd() * pal.length | 0];
+        r.s.material.color.setRGB(c[0], c[1], c[2]);
+        r.s.visible = !0;
+        r.s.material.opacity = 0;
+      }
+      fl.life = fl.max = .25 + .3 * rnd();
+      fl.s1 = (.9 + 1.1 * rnd()) * (.7 + .5 * pw);
+      flashS.position.copy(p);
+      flashS.material.color.setRGB(1, .95 - .2 * rnd(), .8 + .2 * rnd());
+      flashS.visible = !0;
+      E.bl = Math.max(E.bl, 5 * pw);
+      blight.position.copy(p);
+      blight.color.setRGB(pal[0][0], pal[0][1], pal[0][2]);
+      E.bf = Math.max(E.bf, .6 + .4 * rnd());
+      const nb = Math.min(NL, Math.floor((3 + 6 * rnd()) * (pw > 1 ? 1.3 : 1)));
+      for (let i = 0; i < nb; i++) {
+        const b = bolts[i];
+        randDir(b.d);
+        b.o.copy(p);
+        b.len = (.25 + .45 * rnd()) * (.7 + .5 * pw);
+        b.life = b.max = .18 + .24 * rnd();
+        b.jt = 0;
+        b.l.material.color.setHex(rnd() < .5 ? 16777215 : V.arc);
+        b.l.visible = !0;
+      }
+      sfx(pw);
+    }
+    function implode(p, R, life, n) {
+      const pal = pick(BP);
+      for (let k = 0; k < n; k++) {
+        randDir(bD);
+        const r = R * (.5 + .7 * rnd()), l = life * (.7 + .3 * rnd()), c = pal[rnd() * pal.length | 0], br = .6 + .4 * rnd();
+        spawn(p.x + bD.x * r, p.y + bD.y * r, p.z + bD.z * r, -bD.x * r / l, -bD.y * r / l, -bD.z * r / l, l, c[0] * br, c[1] * br, c[2] * br, 0, 0);
+      }
+    }
+    function trail(p, k) {
+      for (let i = 0; i < k; i++) {
+        randDir(bD);
+        const l = .35 + .5 * rnd(), br = .6 + .4 * rnd(), w = rnd() < .5;
+        spawn(p.x + .03 * (rnd() - .5), p.y + .03 * (rnd() - .5), p.z + .03 * (rnd() - .5), .18 * bD.x, .18 * bD.y, .18 * bD.z, l, br, w ? br : .85 * br, w ? br : .5 * br, 2, (rnd() - .6) * .5);
+      }
+    }
+    /* ---- energy streams: orb -> fairy, fairy -> each answer emoji ---- */
+    const NS = 220, spos = new Float32Array(3 * NS), scolA = new Float32Array(3 * NS), sA = new Float32Array(3 * NS), sC = new Float32Array(3 * NS), sB = new Float32Array(3 * NS), sbase = new Float32Array(3 * NS), sage = new Float32Array(NS), sdel = new Float32Array(NS), sdur = new Float32Array(NS).fill(1), sexp = new Float32Array(NS).fill(1), slive = new Uint8Array(NS), sarr = new Uint8Array(NS), sal = new Uint8Array(NS);
+    for (let i = 0; i < NS; i++) {
+      spos[3 * i + 1] = -99;
+    }
+    const sg = new THREE.BufferGeometry;
+    sg.setAttribute("position", new THREE.BufferAttribute(spos, 3));
+    sg.setAttribute("color", new THREE.BufferAttribute(scolA, 3));
+    const sPts = new THREE.Points(sg, new THREE.PointsMaterial({
+      size: .022,
+      map: Mn,
+      vertexColors: !0,
+      transparent: !0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: !1
+    }));
+    sPts.frustumCulled = !1;
+    G.add(sPts);
+    let si = 0;
+    function spawnS(a, b, c, delay, dur, ex, r, g, bl, live, arr) {
+      const i = si;
+      si = (si + 1) % NS;
+      sA[3 * i] = a.x;
+      sA[3 * i + 1] = a.y;
+      sA[3 * i + 2] = a.z;
+      if (b) {
+        sB[3 * i] = b.x;
+        sB[3 * i + 1] = b.y;
+        sB[3 * i + 2] = b.z;
+      }
+      sC[3 * i] = c.x;
+      sC[3 * i + 1] = c.y;
+      sC[3 * i + 2] = c.z;
+      sage[i] = 0;
+      sdel[i] = delay;
+      sdur[i] = dur;
+      sexp[i] = ex;
+      sbase[3 * i] = r;
+      sbase[3 * i + 1] = g;
+      sbase[3 * i + 2] = bl;
+      slive[i] = live ? 1 : 0;
+      sarr[i] = arr ? 1 : 0;
+      sal[i] = 1;
+    }
+    function stream(from, to, n, o) {
+      o = o || {};
+      const pal = pick(BP), live = !to, end = live ? jn.position : to, sp = o.spread || .3;
+      for (let k = 0; k < n; k++) {
+        const c = pal[rnd() * pal.length | 0], br = .6 + .4 * rnd(), f1 = .3 + .4 * rnd();
+        bT.set(from.x + (end.x - from.x) * f1 + (rnd() - .5) * sp, from.y + (end.y - from.y) * f1 + (rnd() - .3) * sp, from.z + (end.z - from.z) * f1 + (rnd() - .5) * sp);
+        spawnS(from, to, bT, (o.delay || .1) * rnd(), (o.dur || .35) * (.8 + .5 * rnd()), 1 + .8 * rnd(), c[0] * br, c[1] * br, c[2] * br, live, o.arrive);
+      }
+    }
+    function feed(from, k) {
+      stream(from, null, k, {
+        spread: .35,
+        dur: .45,
+        delay: .05
+      });
+    }
+    function updS(dt, t) {
+      let any = !1;
+      for (let i = 0; i < NS; i++) {
+        if (!sal[i]) {
+          continue;
+        }
+        any = !0;
+        sage[i] += dt;
+        const u = (sage[i] - sdel[i]) / sdur[i];
+        if (u < 0) {
+          scolA[3 * i] = scolA[3 * i + 1] = scolA[3 * i + 2] = 0;
+          continue;
+        }
+        const live = slive[i], bx = live ? jn.position.x : sB[3 * i], by = live ? jn.position.y : sB[3 * i + 1], bz = live ? jn.position.z : sB[3 * i + 2];
+        if (u >= 1) {
+          sal[i] = 0;
+          spos[3 * i + 1] = -99;
+          scolA[3 * i] = scolA[3 * i + 1] = scolA[3 * i + 2] = 0;
+          if (sarr[i]) {
+            for (let k = 0; k < 2; k++) {
+              randDir(bD);
+              spawn(bx, by, bz, .25 * bD.x, .25 * bD.y, .25 * bD.z, .3 + .3 * rnd(), sbase[3 * i], sbase[3 * i + 1], sbase[3 * i + 2], 3, 0);
+            }
+          }
+          continue;
+        }
+        const v = Math.pow(u, sexp[i]), w = 1 - v;
+        spos[3 * i] = w * w * sA[3 * i] + 2 * w * v * sC[3 * i] + v * v * bx;
+        spos[3 * i + 1] = w * w * sA[3 * i + 1] + 2 * w * v * sC[3 * i + 1] + v * v * by;
+        spos[3 * i + 2] = w * w * sA[3 * i + 2] + 2 * w * v * sC[3 * i + 2] + v * v * bz;
+        const f = Math.min(1, 5 * u) * (.8 + .2 * Math.sin(40 * t + i));
+        scolA[3 * i] = sbase[3 * i] * f;
+        scolA[3 * i + 1] = sbase[3 * i + 1] * f;
+        scolA[3 * i + 2] = sbase[3 * i + 2] * f;
+      }
+      if (any) {
+        sg.attributes.position.needsUpdate = !0;
+        sg.attributes.color.needsUpdate = !0;
+      }
+    }
+    function answerFlow() {
+      if ("answer" !== vn.mode || !Bn.visible || !Wn.length) {
+        return;
+      }
+      if (E.ansKey !== vn.answerUntil) {
+        E.ansKey = vn.answerUntil;
+        E.ansN = 0;
+      }
+      const ms = performance.now() - (vn.answerUntil - 8e3), n = Wn.length;
+      while (E.ansN < n && ms >= 160 * E.ansN) {
+        const j = E.ansN++, row = Math.floor(j / 4), rows = Math.ceil(n / 4), cols = Math.min(4, n - 4 * row), x = .19 * (j - 4 * row - (cols - 1) / 2) * So, y = .19 * (rows - 1 - row) * So + .02 * So + .22 * So;
+        P.getWorldPosition(bT);
+        const r = Math.atan2(bT.x - jn.position.x, bT.z - jn.position.z);
+        bD.set(jn.position.x + Math.cos(r) * x, jn.position.y + y, jn.position.z - Math.sin(r) * x);
+        stream(jn.position, bD, 10 + (8 * rnd() | 0), {
+          spread: .22,
+          dur: .3,
+          delay: .1,
+          arrive: !0
+        });
+      }
+    }
+    Object.assign(E, {
+      burst: burst,
+      implode: implode,
+      trail: trail,
+      stream: stream,
+      feed: feed,
+      hide() {
+        grp.visible = !1;
+        E.el = E.kick = E.flash = E.light = 0;
+        E.glow = 1;
+        for (const l of arcs) {
+          l.visible = !1;
+        }
+      },
+      post(dt, t) {
+        E.on || (grp.visible = !1);
+        E.on = !1;
+        dt = dt || .016;
+        let any = !1;
+        for (let i = 0; i < NB; i++) {
+          if (blife[i] <= 0) {
+            continue;
+          }
+          blife[i] -= dt;
+          any = !0;
+          if (blife[i] <= 0) {
+            bpos[3 * i + 1] = -99;
+            bcolA[3 * i] = bcolA[3 * i + 1] = bcolA[3 * i + 2] = 0;
+            continue;
+          }
+          const k = Math.exp(-bdrag[i] * dt);
+          bvel[3 * i] *= k;
+          bvel[3 * i + 1] = bvel[3 * i + 1] * k + bgrav[i] * dt;
+          bvel[3 * i + 2] *= k;
+          bpos[3 * i] += bvel[3 * i] * dt;
+          bpos[3 * i + 1] += bvel[3 * i + 1] * dt;
+          bpos[3 * i + 2] += bvel[3 * i + 2] * dt;
+          const f = Math.pow(blife[i] / bmax[i], 1.4) * (.75 + .25 * Math.sin(40 * t + 7 * i));
+          bcolA[3 * i] = bbase[3 * i] * f;
+          bcolA[3 * i + 1] = bbase[3 * i + 1] * f;
+          bcolA[3 * i + 2] = bbase[3 * i + 2] * f;
+        }
+        if (any) {
+          bg.attributes.position.needsUpdate = !0;
+          bg.attributes.color.needsUpdate = !0;
+        }
+        for (const r of rings) {
+          if (!r.s.visible) {
+            continue;
+          }
+          if (r.delay > 0) {
+            r.delay -= dt;
+            continue;
+          }
+          r.life -= dt;
+          if (r.life <= 0) {
+            r.s.visible = !1;
+            continue;
+          }
+          const a = 1 - r.life / r.max;
+          r.s.scale.setScalar(.05 + r.r1 * (1 - Math.pow(1 - a, 2.4)));
+          r.s.material.opacity = .85 * Math.pow(1 - a, 1.5);
+        }
+        if (flashS.visible) {
+          fl.life -= dt;
+          if (fl.life <= 0) {
+            flashS.visible = !1;
+          } else {
+            const a = 1 - fl.life / fl.max;
+            flashS.scale.setScalar(.15 + fl.s1 * Math.min(1, 3 * a));
+            flashS.material.opacity = Math.pow(1 - a, 2);
+          }
+        }
+        for (const b of bolts) {
+          if (!b.l.visible) {
+            continue;
+          }
+          b.life -= dt;
+          if (b.life <= 0) {
+            b.l.visible = !1;
+            continue;
+          }
+          b.jt -= dt;
+          if (b.jt <= 0) {
+            b.jt = .03;
+            boltPts(b);
+          }
+          b.l.material.opacity = Math.min(1, Math.pow(b.life / b.max, .7) * (.6 + .8 * rnd()));
+        }
+        updS(dt, t);
+        answerFlow();
+        E.bl *= Math.exp(-6 * dt);
+        blight.intensity = E.bl;
+        E.bf *= Math.exp(-7 * dt);
+      },
+      step(dt, t, o, mode) {
+        E.on = !0;
+        const ms = o - vn.t0, forming = "orb" === mode || "orbthink" === mode;
+        if (forming && E.formKey !== vn.t0) {
+          E.formKey = vn.t0;
+          vary();
+        }
+        if ("emerge" === mode && E.emKey !== vn.t0) {
+          E.emKey = vn.t0;
+          E.popped = !1;
+        }
+        if ("orbfade" === mode && E.fdKey !== vn.t0) {
+          E.fdKey = vn.t0;
+          implode(Rn.position, .25 + .3 * rnd(), .85 * (vn.fd || 420) / 1e3, 40 + (60 * rnd() | 0));
+        }
+        if ("emerge" === mode && !E.popped && ms / jo >= (vn.ea || .2)) {
+          E.popped = !0;
+          E.kick = 1.2;
+        }
+        const T = E.T, p = Math.min(1, ms / T);
+        const think = "orbthink" === mode && ms >= .92 * T || "orbfade" === mode || "emerge" === mode && ms / jo < .88;
+        grp.position.copy(Rn.position);
+        const isForm = forming && ms < 1.12 * T;
+        grp.visible = isForm;
+        if (isForm) {
+          const fade = Math.min(1, p / .15) * (1 - Math.max(0, (ms - T) / (.12 * T)));
+          pm.opacity = .95 * fade;
+          for (let i = 0; i < V.np; i++) {
+            const ph = Math.min(1, Math.max(0, (p - DL[i]) / (1 - DL[i]))), r = R0[i] * V.rad * Math.pow(1 - ph, 2.2), ang = V.sw * SW[i] * ph * ph * .9, c = Math.cos(ang), s2 = Math.sin(ang), dx = dir[3 * i], dy = dir[3 * i + 1], dz = dir[3 * i + 2];
+            pos[3 * i] = (dx * c - dz * s2) * r;
+            pos[3 * i + 1] = dy * r;
+            pos[3 * i + 2] = (dx * s2 + dz * c) * r;
+          }
+          pg.attributes.position.needsUpdate = !0;
+          if (ms < T) {
+            halo.scale.setScalar(.2 + .6 * V.halo * Math.pow(1 - p, 1.6));
+            halo.material.opacity = .5 * Math.sin(Math.PI * Math.min(1, .15 + .85 * p));
+          } else {
+            const w = Math.min(1, (ms - T) / (.12 * T + 230));
+            halo.scale.setScalar(.2 + .75 * V.halo * w);
+            halo.material.opacity = .6 * (1 - w) * (1 - w);
+          }
+        }
+        E.glow = forming && p < 1 ? .35 + .65 * p * p : 1;
+        E.flash = (forming && ms >= T ? V.flash * Math.max(0, 1 - (ms - T) / 380) : 0) + E.bf;
+        E.el += ((think ? 1 : 0) - E.el) * Math.min(1, (think ? 7 : 10) * dt);
+        if (E.el > .25) {
+          E.next -= dt;
+          if (E.next <= 0) {
+            const q = rnd(), sc = "orbthink" === mode ? 1 : .45;
+            if (q < V.dbl) {
+              E.kick = V.kmul;
+              E.next = .05 + .05 * rnd();
+            } else if (q < V.dbl + V.big) {
+              E.kick = 1.5 * V.kmul;
+              E.next = (V.sMin + V.sSpan * rnd()) * sc * 1.4;
+            } else {
+              E.kick = (.55 + .45 * rnd()) * V.kmul;
+              E.next = (V.sMin + V.sSpan * rnd()) * sc;
+            }
+            for (let i = 0; i < NA; i++) {
+              shape(arcs[i]);
+            }
+          }
+          E.jit -= dt;
+          if (E.jit <= 0) {
+            E.jit = .03 + .04 * rnd();
+            for (let k = 0, n = 1 + (4 * rnd() | 0); k < n; k++) {
+              shape(arcs[rnd() * NA | 0]);
+            }
+          }
+        }
+        E.kick *= Math.exp(-9 * dt);
+        E.light = 5 * E.kick * E.el + 3 * E.flash;
+        const show = E.el > .02;
+        for (let i = 0; i < NA; i++) {
+          const l = arcs[i];
+          l.visible = show && i < V.nArcs;
+          if (l.visible) {
+            l.material.opacity = Math.min(1, E.el * (.2 + .5 * rnd() + .8 * E.kick));
+          }
+        }
+        const m = E.el;
+        Hn.material.color.copy(cH0).lerp(cH1, m);
+        xn.material.color.copy(cX0).lerp(cX1, m);
+        Sn.material.color.copy(cS0).lerp(cS1, m);
+        zn.color.copy(cZ0).lerp(cZ1, m);
+      }
+    });
+    return E;
+  })();
   function lr(e, t) {
-    cr(e, t), sr();
+    cr(e, t), EF.post(e, t), sr();
   }
   function cr(e, t) {
     const a = vn.mode, o = performance.now();
     if ("hidden" === a) {
-      return jn.visible = !1, Bn.visible = !1, Rn.visible = !1, void (zn.visible = !1);
+      return EF.hide(), jn.visible = !1, Bn.visible = !1, Rn.visible = !1, void (zn.visible = !1);
     }
     if (zn.visible = !0, "orb" === a || "orbthink" === a || "orbfade" === a || "emerge" === a) {
       const n = "orbthink" === a;
       let r = 1, i = 0, s = 0, l = n ? 6 : 2;
       if ("orb" === a || "orbthink" === a) {
         Nn(In, xo, -.05, e), Un(In, e), Wo.copy(In), Wo.y += .025 * Math.sin(1.7 * t), Rn.position.lerp(Wo, Math.min(1, 6 * e));
-        const a = Math.min(1, (o - vn.t0) / 900);
-        s = 2.5 * (1 - a), r = zo * kn(a) * (1 + (n ? .12 : .06) * Math.sin(t * (n ? 14 : 6)));
+        const a = Math.min(1, Math.max(0, ((o - vn.t0) / EF.T - .25) / .75));
+        s = 2.5 * (1 - a), r = zo * kn(a) * (1 + .05 * Math.sin(t * 6) + .16 * EF.kick);
       } else if ("orbfade" === a) {
-        const e = Math.min(1, (o - vn.t0) / 450);
-        if (r = vn.s0 * (1 - e * e), l = 4, e >= 1) {
-          return vn.mode = "hidden", Rn.visible = !1, zn.visible = !1, void (jn.visible = !1);
+        const fd = vn.fd || 420, e = Math.min(1, (o - vn.t0) / fd);
+        if (r = vn.s0 * (1 - .45 * e * e * (3 - 2 * e) + .08 * e * Math.sin(t * (70 + fd % 40))), i = 1.3 * e * e, l = 14, e >= 1) {
+          return EF.burst(Rn.position, vn.fp || 1), vn.mode = "hidden", Rn.visible = !1, zn.visible = !1, void (jn.visible = !1);
         }
       } else {
-        const e = Math.min(1, (o - vn.t0) / jo);
-        i = e < .2 ? e / .2 : Math.max(0, 1 - (e - .2) / .5), r = vn.s0 * (e < .2 ? 1 + .5 * e / .2 : 1.5 * (1 - Math.min(1, (e - .2) / .8))), 
+        const e = Math.min(1, (o - vn.t0) / jo), ea = vn.ea || .2, ep = vn.ep || 1, q = e < ea ? e / ea : 0, w = e < ea ? 0 : Math.min(1, (e - ea) / .13);
+        i = e < ea ? q * q * .8 * ep : Math.max(0, 1 - (e - ea) / .5) * .6 * ep, r = vn.s0 * (e < ea ? 1 + .18 * q * q + .04 * q * Math.sin(t * (50 + 30 * ep)) : 1.18 * (1 - Math.pow(Math.min(1, (e - ea) / (.82 * (1 - ea))), 1.4)) * (1 + .05 * Math.sin(t * 30))), 
         l = 9;
       }
-      if (Rn.visible = !0, Rn.scale.setScalar(Math.max(.001, r)), Tn.material.opacity = Math.min(1, .7 + .15 * Math.sin(t * (n ? 14 : 6)) + .6 * i), 
-      xn.material.opacity = .22 + .08 * Math.sin(5 * t) + .3 * i, Sn.rotation.y = t * l, 
+      EF.step(e, t, o, a, n);
+      if (Rn.visible = !0, Rn.scale.setScalar(Math.max(.001, r)), Tn.material.opacity = Math.min(1, (.7 + .15 * Math.sin(t * (n ? 14 : 6)) + .6 * i) * EF.glow + EF.flash), 
+      xn.material.opacity = .22 + .08 * Math.sin(5 * t) + .3 * i + .35 * EF.kick, Sn.rotation.y = t * l, 
       Sn.rotation.x = .4 * Math.sin(1.3 * t), Sn.scale.setScalar(1 + s + 1.2 * i), zn.position.copy(Rn.position), 
-      zn.intensity = (1.4 + .5 * Math.sin(6 * t)) * Math.min(1, Rn.scale.x) + 2.5 * i, 
+      zn.intensity = (1.4 + .5 * Math.sin(6 * t)) * Math.min(1, Rn.scale.x) + 2.5 * i + EF.light, 
       "emerge" !== a) {
         return jn.visible = !1, void (Bn.visible = !1);
       }
@@ -4491,28 +5192,28 @@ await (async function() {
     let n = 1, r = So, i = 1;
     const s = _n(Io, e);
     if ("emerge" === a) {
-      const e = Math.min(1, (o - vn.t0) / jo), t = Math.min(1, Math.max(0, (e - .18) / .82)), a = 1 - Math.pow(1 - t, 3);
-      jn.position.lerpVectors(vn.from, s, a), jn.position.y += .1 * Math.sin(t * Math.PI), 
-      r = So * (.1 + .9 * a), n = Math.min(1, Math.max(0, (e - .12) / .35)), i = er(.55, 1, e), 
+      const e = Math.min(1, (o - vn.t0) / jo), ea = vn.ea || .2, t = Math.min(1, Math.max(0, (e - ea) / (1 - ea))), a = 1 - Math.pow(1 - t, 3);
+      jn.position.lerpVectors(vn.from, s, a), jn.position.y += (vn.lift || .1) * Math.sin(t * Math.PI), jn.position.x += (vn.sw || 0) * Math.sin(t * Math.PI) * (1 - t), jn.position.z += .6 * (vn.sw || 0) * Math.sin(t * Math.PI + 1) * (1 - t), vn.sn = (1 - t) * (1 - t) * (vn.spin || 0), e >= ea && t < .92 && EF.trail(jn.position, 1 + (3 * Math.random() | 0)), e >= ea && t < .88 && EF.feed(vn.from, 3 + (3 * Math.random() | 0)), 
+      r = So * (.02 + .98 * kn(Math.min(1, 1.5 * t))), n = e < ea ? 0 : Math.min(1, (e - ea) / .25), i = er(.55, 1, e), 
       e >= 1 && (vn.hasAnswer ? Jn() : vn.mode = "hover");
     } else if ("return" === a) {
-      const e = Math.min(1, (o - vn.t0) / 700), t = e * e;
-      if (Wo.copy(In), jn.position.lerpVectors(vn.from, Wo, t), r = Math.max(.04, So * (1 - t)), 
-      n = 1 - t, e >= 1) {
-        return vn.mode = "hidden", jn.visible = !1, Bn.visible = !1, void (zn.visible = !1);
+      const e = Math.min(1, (o - vn.t0) / (vn.rd || 480)), t = vn.rf ? e * e : 0;
+      if (Wo.copy(In), jn.position.lerpVectors(vn.from, Wo, t), jn.position.y += .012 * e * Math.sin(.09 * o), r = So * (1 + (vn.rg || .3) * e * e), 
+      n = 1, e >= 1) {
+        return EF.burst(jn.position, vn.rp || 1.2), vn.mode = "hidden", jn.visible = !1, Bn.visible = !1, void (zn.visible = !1);
       }
     } else {
       jn.position.lerp(s, Math.min(1, 4 * e)), jn.position.y += .018 * Math.sin(2.4 * t), 
       r = So * (1 + .04 * Math.sin(3 * t)), "answer" === a && o > vn.answerUntil && Zn();
     }
-    jn.scale.setScalar(r), jn.lookAt(He(P, Wo)), jn.rotation.z = .06 * Math.sin(2 * t);
+    jn.scale.setScalar(r), jn.lookAt(He(P, Wo)), jn.rotation.z = .06 * Math.sin(2 * t) + (vn.sn || 0);
     const l = .75 * Math.sin(22 * t);
     Ln.rotation.y = .5 + .6 * l, Gn.rotation.y = -.5 - .6 * l, Ln.rotation.z = .4 + .25 * l, 
     Gn.rotation.z = -.4 - .25 * l, An.material.opacity = n, Ln.material.opacity = Gn.material.opacity = .5 * n, 
     Dn.scale.setScalar(1 + .25 * Math.sin(6 * t)), Dn.material.opacity = (.65 + .3 * Math.sin(6 * t)) * n, 
     Vn.material.opacity = .55 * n * i, Vn.rotation.z = 1.4 * t, Pn.material.opacity = .9 * n, 
     Pn.rotation.y = 2.2 * t, Pn.rotation.x = .4 * Math.sin(1.3 * t), zn.position.copy(jn.position), 
-    zn.intensity = (1.8 + .7 * Math.sin(6 * t)) * n, Bn.visible && Bn.position.copy(jn.position).add(Wo.set(0, .22 * So, 0));
+    zn.intensity = (1.8 + .7 * Math.sin(6 * t)) * n + EF.light, Bn.visible && Bn.position.copy(jn.position).add(Wo.set(0, .22 * So, 0));
   }
   const hr = x.TRANSCRIBE_MODEL || "muse-voice-transcribe-1.0";
   async function dr() {
@@ -5440,7 +6141,7 @@ await (async function() {
     return h > 0 && (hs.normalize(), cs.addScaledVector(hs, h)), a.lerp(cs, r), e.add(cs.copy(a).applyQuaternion(n));
   }
   const us = new THREE.Vector3;
-  function ms(e, t) {
+  function armPose(e, t) {
     return us.set(.3 * e, -.65, .45).applyQuaternion(t).clone();
   }
   const ys = .46, ws = .46, bs = 1.68, Es = (new THREE.Quaternion).setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2), ks = (new THREE.Quaternion).setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2), vs = new THREE.Quaternion, Ms = new THREE.Quaternion, Rs = (new THREE.Quaternion).setFromAxisAngle(new THREE.Vector3(1, 0, 0), -1.35), xs = 30;
@@ -6585,15 +7286,17 @@ await (async function() {
       if (right && "wheel" === Cc.mode) {
         continue;
       }
-      let want = .2 + .7 * Math.max(0, arm.rotation.x) + .05 * Math.sin(1.8 * t + (right ? 1 : 0)), wz = 0;
+      el.rotation.order = "YXZ";
+      let want = .2 + .7 * Math.max(0, arm.rotation.x) + .05 * Math.sin(1.8 * t + (right ? 1 : 0)), wz = 0, wy = 0;
       if (right && "wave" === Cc.mode) {
         const w = (performance.now() - Cc.t0) / 1e3, sm = x => (x = Math.max(0, Math.min(1, x))) * x * (3 - 2 * x), a = sm(w / .55) * (1 - sm((w - 1.7) / .7));
-        want = .25 + .55 * a;
-        wz = .35 * Math.sin(10 * w) * a;
+        /* natural wave: elbow flexed ~90deg with the forearm pointing up (hinge twisted -90deg about the upper-arm axis), hand sweeps by rotating the forearm about the upper arm */
+        want = .25 + 1.3 * a;
+        wy = -1.5 * a + .42 * Math.sin(10 * w) * a;
       } else if (right && "thinking" === Cc.mode) {
         want = 1.5;
       }
-      el.rotation.set(el.rotation.x + (want - el.rotation.x) * k, el.rotation.y * (1 - k), el.rotation.z + (wz - el.rotation.z) * k);
+      el.rotation.set(el.rotation.x + (want - el.rotation.x) * k, el.rotation.y + (wy - el.rotation.y) * k, el.rotation.z + (wz - el.rotation.z) * k);
     }
   }
   function kidFingerSync(t, dt) {
@@ -6711,12 +7414,7 @@ await (async function() {
   }
   const Lc = 'You are Muse Spark, inhabiting a small plain blue child avatar in a VR room. You ARE that child: about six years old, friendly, curious, playful and simple-spoken, seeing the room through the avatar\'s eyes. Another person standing in front of you just sent you the emoji sequence below (that is how people talk here — in emoji). The attached image is what YOU see from your avatar\'s eyes right now: use it to notice the person in front of you and the room, but answer the emoji message. Work in two steps. STEP 1 — on one line starting with "THINK:", say in plain words, as a child, what their emoji probably means and what you want back. STEP 2 — on a new line starting with "ANSWER:", reply ONLY as a child would, in 12 or fewer emoji, in a sensible order: react first (face/heart/wave), then answer or play back with concrete things. Keep it simple and kind, like a little kid in VR who is excited to have a friend. Never explain in words in the ANSWER, never restate an adult answer, and refuse lewd or hateful messages with ANSWER: 🚫. Output exactly those two lines.';
   function Gc(e) {
-    const q = ipat(e);
-    if (q.length) {
-      return q;
-    }
-    const used = new Set(e.map(x => c(x)));
-    return [ "👋", "😀", "💙", "✨", "🙌", "🤔", "💡", "🫂", "⭐", "🎈" ].filter(x => !used.has(c(x)) && !ho.has(x)).slice(0, 4);
+    return Array.isArray(e) && e.length ? [ ...e ].slice(0, $t) : [ "👋" ];
   }
   async function Pc(e, t) {
     let a = "";
@@ -7288,10 +7986,10 @@ await (async function() {
     v("💙 Spark waved back! Send some emoji (close your wheel) — it will answer.")) : o.near && o.facing || Ic(performance.now(), !1), 
     "wave" === Cc.mode) {
       const e = (performance.now() - Cc.t0) / 1e3, t = e => (e = Math.max(0, Math.min(1, e))) * e * (3 - 2 * e), a = t(e / .55) * (1 - t((e - 1.7) / .7));
-      oc.rotation.z = .14 + 2.31 * a + .28 * Math.sin(10 * e) * a, oc.rotation.x = -.3 * a, 
+      oc.rotation.z = .14 + 1.11 * a + .04 * Math.sin(10 * e) * a, oc.rotation.y = .9 * a, oc.rotation.x = 0, 
       e > 2.4 && (Cc.mode = "idle", oc.rotation.set(0, 0, .14));
     } else {
-      "idle" === Cc.mode && (oc.rotation.z += (.14 - oc.rotation.z) * Math.min(1, 8 * e), 
+      "idle" === Cc.mode && (oc.rotation.y *= 1 - Math.min(1, 8 * e), oc.rotation.z += (.14 - oc.rotation.z) * Math.min(1, 8 * e), 
       oc.rotation.x += (.7 * WK.sw - oc.rotation.x) * Math.min(1, 10 * e), nc.rotation.x += (-.7 * WK.sw - nc.rotation.x) * Math.min(1, 10 * e), 
       nc.rotation.z = -.14 - .04 * Math.sin(1.8 * t), oc.rotation.z += .04 * Math.sin(1.8 * t + 1));
     }
@@ -7442,7 +8140,7 @@ await (async function() {
       const n = Te("left"), r = Te("right"), i = D.xr.isPresenting;
       if (V) {
         try {
-          ln(t), ms(t), dn(a);
+          ln(t), dn(a);
         } catch (e) {
           Jc.w || (Jc.w = 1, console.warn("[ar room]", e));
         }
@@ -7516,7 +8214,7 @@ await (async function() {
         }
         const T = M.clone().add(new THREE.Vector3(0, 0, .07).applyQuaternion(vs)), x = R.clone().add(new THREE.Vector3(0, 0, .07).applyQuaternion(Ms)), H = Math.min(1, 12 * a);
         ps(g, T, ss, -1, p, H), ps(f, x, ls, 1, p, H);
-        const S = tl(g, T, ms(-1, p)), z = tl(f, x, ms(1, p)), j = new THREE.Vector3(0, .15, -1).applyQuaternion(p), D = tl(y, u.clone().setY(Math.max(u.y, .04)), j, ys, ws), A = tl(w, m.clone().setY(Math.max(m.y, .04)), j, ys, ws);
+        const S = tl(g, T, armPose(-1, p)), z = tl(f, x, armPose(1, p)), j = new THREE.Vector3(0, .15, -1).applyQuaternion(p), D = tl(y, u.clone().setY(Math.max(u.y, .04)), j, ys, ws), A = tl(w, m.clone().setY(Math.max(m.y, .04)), j, ys, ws);
         c.torso.quaternion.copy(p), c.pelvis.quaternion.copy(p), c.upper.quaternion.copy(p), 
         c.torso.position.y = c.pelvis.position.y = c.upper.position.y = -$i, me.quaternion.copy(p), 
         ge.quaternion.copy(p), fe.quaternion.copy(p), me.position.y = ge.position.y = fe.position.y = -$i;
