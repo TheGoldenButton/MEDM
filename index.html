@@ -3997,7 +3997,7 @@ Question: ` +
 					"📐 Room boundaries unavailable — this headset/browser gave no plane data (run Space Setup, allow spatial data, re-enter AR). Spark and the avatar still stay in front of you, just without wall checks.",
 				))
 			);
-		if (t - lastPlaneScanTime < 250) return;
+		if (t - lastPlaneScanTime < 100) return;
 		lastPlaneScanTime = t;
 		const o = renderer.xr.getReferenceSpace();
 		if (!o) return;
@@ -4008,18 +4008,29 @@ Question: ` +
 		if (
 			(n.forEach((s) => {
 				let l = planeMeshes.get(s);
-				if (l && l.t === s.lastChangedTime) return;
 				const i = e.getPose(s.planeSpace, o);
 				if (!i) return;
+				if (l && l.t === s.lastChangedTime && l.cl) {
+					/* shape unchanged: still refresh the pose every scan tick, tracking drifts/relocalizes */
+					const b2 = i.transform.orientation,
+						f2 = i.transform.position;
+					l.mesh.quaternion.set(b2.x, b2.y, b2.z, b2.w);
+					planeCenter.set(l.cl[0], 0, l.cl[1]).applyQuaternion(l.mesh.quaternion);
+					const nx = f2.x + planeCenter.x, ny = f2.y + planeCenter.y, nz = f2.z + planeCenter.z;
+					Math.abs(nx - l.mesh.position.x) + Math.abs(ny - l.mesh.position.y) + Math.abs(nz - l.mesh.position.z) > 0.01 && (a = !0);
+					l.mesh.position.set(nx, ny, nz);
+					return;
+				}
 				if (!l) {
 					const w = new Mesh(
 						groundPlaneGeometry,
 						new MeshBasicMaterial({
-							visible: !1,
+							colorWrite: !1,
+							depthWrite: !0,
 							side: DoubleSide,
 						}),
 					);
-					(planeGroup.add(w),
+					((w.renderOrder = -10), (w.frustumCulled = !1), planeGroup.add(w),
 						(l = {
 							mesh: w,
 							label: "",
@@ -4048,6 +4059,7 @@ Question: ` +
 					planeCenter.set((c + d) / 2, 0, (h + u) / 2).applyQuaternion(l.mesh.quaternion),
 					l.mesh.position.set(f.x + planeCenter.x, f.y + planeCenter.y, f.z + planeCenter.z),
 					l.mesh.scale.set(Math.max(0.05, d - c), 1, Math.max(0.05, u - h)),
+					(l.cl = [(c + d) / 2, (h + u) / 2]),
 					(l.big = d - c >= 0.8 && u - h >= 0.8),
 					(a = !0));
 			}),
@@ -4084,6 +4096,37 @@ Question: ` +
 						" — Spark and the avatar will stay inside your real room.",
 				),
 			scanRoomPlanes());
+	}
+	function updateScanMeshes(e) {
+		if (!e || !e.detectedMeshes) return;
+		const o = renderer.xr.getReferenceSpace();
+		if (!o) return;
+		for (const [s, l] of scanPlaneMeshes)
+			e.detectedMeshes.has(s) ||
+				(planeGroup.remove(l.mesh), l.mesh.geometry.dispose(), l.mesh.material.dispose(), scanPlaneMeshes.delete(s));
+		e.detectedMeshes.forEach((s) => {
+			let l = scanPlaneMeshes.get(s);
+			const i = e.getPose(s.meshSpace, o);
+			if (!i) return;
+			if (l && l.t === s.lastChangedTime) {
+				l.mesh.position.set(i.transform.position.x, i.transform.position.y, i.transform.position.z);
+				l.mesh.quaternion.set(i.transform.orientation.x, i.transform.orientation.y, i.transform.orientation.z, i.transform.orientation.w);
+				return;
+			}
+			if (!s.vertices || !s.indices) return;
+			const g = new BufferGeometry();
+			(g.setAttribute("position", new BufferAttribute(new Float32Array(s.vertices), 3)), g.setIndex(Array.from(s.indices)));
+			if (!l) {
+				const w = new Mesh(
+					g,
+					new MeshBasicMaterial({ colorWrite: !1, depthWrite: !0, side: DoubleSide }),
+				);
+				((w.renderOrder = -10), (w.frustumCulled = !1), planeGroup.add(w), (l = { mesh: w, t: 0, rc: !0 }), scanPlaneMeshes.set(s, l));
+			} else (l.mesh.geometry.dispose(), (l.mesh.geometry = g));
+			((l.t = s.lastChangedTime),
+				l.mesh.position.set(i.transform.position.x, i.transform.position.y, i.transform.position.z),
+				l.mesh.quaternion.set(i.transform.orientation.x, i.transform.orientation.y, i.transform.orientation.z, i.transform.orientation.w));
+		});
 	}
 	function clampToRoomBounds(e, t) {
 		let n = !1;
@@ -4161,13 +4204,42 @@ Question: ` +
 			(kidPositioned = !0),
 			(yr = roomScanFound));
 	}
+	const losRay = new Raycaster(),
+		losFrom = new Vector3(),
+		losDir = new Vector3(),
+		losHit = [];
+	function keepInLineOfSight(e, t, n) {
+		/* pull e back in front of any real wall/furniture between the headset and it */
+		if (!arMode || (!planeMeshes.size && !scanPlaneMeshes.size)) return !1;
+		getWorldPosition(camera, losFrom);
+		losDir.set(e.x - losFrom.x, e.y + t - losFrom.y, e.z - losFrom.z);
+		const o = losDir.length();
+		if (o < 0.2) return !1;
+		losDir.divideScalar(o);
+		planeGroup.updateWorldMatrix(!0, !0);
+		losRay.set(losFrom, losDir);
+		losRay.near = 0.1;
+		losRay.far = o + n;
+		const a = [];
+		for (const r of planeMeshes.values()) r.label !== "floor" && r.label !== "ceiling" && a.push(r.mesh);
+		for (const r of scanPlaneMeshes.values()) r.rc && a.push(r.mesh);
+		losHit.length = 0;
+		losRay.intersectObjects(a, !1, losHit);
+		const s = losHit[0];
+		if (!s) return !1;
+		const l = Math.max(0.3, s.distance - n);
+		return ((e.x = losFrom.x + losDir.x * l), (e.z = losFrom.z + losDir.z * l), !0);
+	}
 	function updateArShadow(e) {
 		(getWorldPosition(camera, headPos), arShadowPlane.position.set(headPos.x, 0.002, headPos.z));
 		for (const t of ceilingLights)
 			(t.position.set(headPos.x + t.userData.x, roomBounds.h - 0.1, headPos.z),
 				t.target.position.set(headPos.x + 0.6 * t.userData.x, 0, headPos.z),
 				t.target.updateMatrixWorld());
-		!kidPositioned || (roomScanFound && !yr) ? Hh() : clampToRoomPlanes(kidAvatar.position, 0.45);
+		!kidPositioned || (roomScanFound && !yr)
+			? Hh()
+			: (clampToRoomPlanes(kidAvatar.position, 0.45), keepInLineOfSight(kidAvatar.position, 0.9, 0.5),
+				clampToRoomPlanes(kidAvatar.position, 0.45));
 	}
 	function placeOrbPosition(e, t, n, o) {
 		(camera.getWorldDirection(flatForward),
@@ -4213,6 +4285,7 @@ Question: ` +
 			(o.y += n),
 			arMode
 				? (clampToRoomPlanes(o, 0.35),
+					keepInLineOfSight(o, 0, 0.35),
 					lowestCeilingY != null && (o.y = Math.min(o.y, lowestCeilingY - 0.25)))
 				: ((o.x = Math.max(roomBounds.x0 + 0.5, Math.min(roomBounds.x1 - 0.5, o.x))),
 					(o.z = Math.max(roomBounds.z0 + 0.5, Math.min(roomBounds.z1 - 0.5, o.z)))),
@@ -4812,7 +4885,7 @@ Question: ` +
 					opacity: 0,
 					blending: AdditiveBlending,
 					depthWrite: !1,
-					depthTest: !1,
+					depthTest: !0,
 				}),
 			);
 			((C.frustumCulled = !1), (C.renderOrder = 12), (C.visible = !1), sparkOrb.add(C), z.push(C));
@@ -6687,9 +6760,10 @@ Content-Type: audio/wav\r
 		const e = window.RS;
 		if (!e) return;
 		const t = roomStyle !== "ar";
-		((e.floor.visible = !0), (e.floor.material.colorWrite = t));
-		for (const n of [e.ceil, ...e.walls, ...e.lights])
-			n && ((n.visible = !1), (n.material.colorWrite = !1));
+		((e.floor.visible = !0), (e.floor.material.colorWrite = t), (e.floor.material.depthWrite = !0));
+		for (const n of [e.ceil, ...e.walls])
+			n && ((n.visible = !t), (n.material.colorWrite = !1), (n.material.depthWrite = !0));
+		for (const n of e.lights) n && ((n.visible = !1), (n.material.colorWrite = !1));
 		for (const n of occluderMaterials) n.colorWrite = t;
 		ps.visible = !0;
 	}
@@ -10059,7 +10133,7 @@ Their emoji message to you: ` +
 				s = renderer.xr.isPresenting;
 			if (arMode)
 				try {
-					(updateScanPlanes(t), updateArShadow(n));
+					(updateScanPlanes(t), updateScanMeshes(t), updateArShadow(n));
 				} catch (i) {
 					startMainLoop.w || ((startMainLoop.w = 1), console.warn("[ar room]", i));
 				}
