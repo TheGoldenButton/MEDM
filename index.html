@@ -4204,6 +4204,147 @@ Question: ` +
 			(kidPositioned = !0),
 			(yr = roomScanFound));
 	}
+
+	/* ---- Per-pixel real-world occlusion (WebXR Depth API, CPU-optimized) ----
+	   Kid + Spark materials discard any fragment that lies behind the real surface the headset sees
+	   at that pixel (walls, furniture, doorways, your hands). Falls back to the plane/mesh occluders. */
+	const depthOcc = {
+		uniforms: {
+			uDepthL: { value: null },
+			uDepthR: { value: null },
+			uNormL: { value: new THREE.Matrix4() },
+			uNormR: { value: new THREE.Matrix4() },
+			uVpL: { value: new THREE.Vector4(0, 0, 1, 1) },
+			uVpR: { value: new THREE.Vector4(0, 0, 1, 1) },
+			uRaw: { value: new THREE.Vector2(1, 1) },
+			uFmt: { value: 0 },
+			uOn: { value: 0 },
+			uTwo: { value: 0 },
+		},
+		tex: [null, null],
+		dims: ["", ""],
+		notified: !1,
+		lastPatch: 0,
+	};
+	function patchDepthMat(m) {
+		if (!m || !m.isMaterial || m.userData.arOcc || m.depthTest === !1) return;
+		m.userData.arOcc = !0;
+		const prev = m.onBeforeCompile,
+			prevKey = m.customProgramCacheKey;
+		m.onBeforeCompile = function (sh, r) {
+			prev && prev.call(this, sh, r);
+			let vs = sh.vertexShader;
+			const decl = "varying float vOccViewZ;\n";
+			if (vs.includes("#include <project_vertex>"))
+				vs = vs.replace("#include <project_vertex>", "#include <project_vertex>\n\tvOccViewZ = -mvPosition.z;");
+			else if (vs.includes("gl_Position = projectionMatrix * mvPosition;"))
+				vs = vs.replace(
+					"gl_Position = projectionMatrix * mvPosition;",
+					"gl_Position = projectionMatrix * mvPosition;\n\tvOccViewZ = -mvPosition.z;",
+				);
+			else return;
+			if (!sh.fragmentShader.includes("void main() {")) return;
+			sh.vertexShader = decl + vs;
+			sh.fragmentShader =
+				"uniform highp sampler2D uDepthL;\nuniform highp sampler2D uDepthR;\nuniform mat4 uNormL;\nuniform mat4 uNormR;\nuniform vec4 uVpL;\nuniform vec4 uVpR;\nuniform vec2 uRaw;\nuniform float uFmt;\nuniform float uOn;\nuniform float uTwo;\nvarying float vOccViewZ;\n" +
+				"float occRealDepth() {\n" +
+				"\tvec2 fc = gl_FragCoord.xy;\n" +
+				"\tbool right = uTwo > 0.5 && fc.x >= uVpR.x && fc.x < uVpR.x + uVpR.z && fc.y >= uVpR.y && fc.y < uVpR.y + uVpR.w;\n" +
+				"\tvec4 vp = right ? uVpR : uVpL;\n" +
+				"\tvec2 nv = (fc - vp.xy) / vp.zw;\n" +
+				"\tvec4 dL = uNormL * vec4(nv.x, 1.0 - nv.y, 0.0, 1.0);\n" +
+				"\tvec4 dR = uNormR * vec4(nv.x, 1.0 - nv.y, 0.0, 1.0);\n" +
+				"\tvec2 uvL = dL.xy / dL.w;\n\tvec2 uvR = dR.xy / dR.w;\n" +
+				"\tvec2 uv = right ? uvR : uvL;\n" +
+				"\tif (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;\n" +
+				"\tvec4 sL = texture2D(uDepthL, uvL);\n\tvec4 sR = texture2D(uDepthR, uvR);\n" +
+				"\tvec4 s = right ? sR : sL;\n" +
+				"\tfloat raw = uFmt > 0.5 ? s.r : (s.r * 255.0 + s.g * 65280.0);\n" +
+				"\treturn raw * (right ? uRaw.y : uRaw.x);\n}\n" +
+				"void occTest() {\n\tif (uOn < 0.5) return;\n\tfloat d = occRealDepth();\n\tif (d > 0.1 && d < 8.0 && vOccViewZ > d + 0.06 + 0.03 * d) discard;\n}\n" +
+				sh.fragmentShader.replace("void main() {", "void main() {\n\toccTest();");
+			Object.assign(sh.uniforms, depthOcc.uniforms);
+		};
+		m.customProgramCacheKey = function () {
+			return (prevKey ? prevKey.call(this) : "") + "|arocc";
+		};
+		m.needsUpdate = !0;
+	}
+	function patchDepthRoots() {
+		for (const r of [kidAvatar, sparkOrb, sparkFairy, sparkAnswerGroup])
+			r &&
+				r.traverse((o) => {
+					const m = o.material;
+					m && (Array.isArray(m) ? m.forEach(patchDepthMat) : patchDepthMat(m));
+				});
+	}
+	function updateDepthOcclusion(frame) {
+		const U = depthOcc.uniforms;
+		U.uOn.value = 0;
+		if (!frame || !frame.session) return;
+		const sess = frame.session,
+			usage = sess.depthUsage;
+		if (!depthOcc.notified && renderer.xr.isPresenting) {
+			depthOcc.notified = !0;
+			setStatus(
+				usage === "cpu-optimized"
+					? "🫥 Depth occlusion on — Spark and the kid now hide behind real walls, furniture and doorways."
+					: "🫥 Per-pixel depth isn't available in this session (" +
+							(usage || "not granted") +
+							") — using room-scan occluders only. Run Space Setup and re-enter AR for best results.",
+			);
+		}
+		if (usage !== "cpu-optimized" || !sess.depthDataFormat) return;
+		const now = performance.now();
+		now - depthOcc.lastPatch > 1500 && ((depthOcc.lastPatch = now), patchDepthRoots());
+		const ref = renderer.xr.getReferenceSpace();
+		if (!ref) return;
+		const pose = frame.getViewerPose(ref);
+		if (!pose) return;
+		const fmt = sess.depthDataFormat === "float32" ? 1 : 0,
+			cams = renderer.xr.getCamera().cameras || [];
+		let got = 0;
+		for (let i = 0; i < Math.min(2, pose.views.length); i++) {
+			let info = null;
+			try {
+				info = frame.getDepthInformation(pose.views[i]);
+			} catch {}
+			if (!info || !info.data) continue;
+			const w = info.width,
+				h = info.height,
+				bytes = info.data.byteLength;
+			if (bytes !== w * h * (fmt ? 4 : 2)) continue;
+			const key = w + "x" + h + "f" + fmt;
+			if (depthOcc.dims[i] !== key) {
+				depthOcc.tex[i] && depthOcc.tex[i].dispose();
+				depthOcc.tex[i] = fmt
+					? new THREE.DataTexture(new Float32Array(info.data), w, h, THREE.RedFormat, THREE.FloatType)
+					: new THREE.DataTexture(new Uint8Array(info.data), w, h, THREE.RGFormat, THREE.UnsignedByteType);
+				depthOcc.tex[i].minFilter = depthOcc.tex[i].magFilter = THREE.NearestFilter;
+				depthOcc.tex[i].generateMipmaps = !1;
+				depthOcc.dims[i] = key;
+			}
+			const t = depthOcc.tex[i];
+			t.image.data = fmt ? new Float32Array(info.data) : new Uint8Array(info.data);
+			t.needsUpdate = !0;
+			const side = i === 0 ? "L" : "R";
+			U["uDepth" + side].value = t;
+			U["uNorm" + side].value.fromArray(info.normDepthBufferFromNormView.matrix);
+			U.uRaw.value.setComponent(i, info.rawValueToMeters);
+			cams[i] && cams[i].viewport && U["uVp" + side].value.copy(cams[i].viewport);
+			got++;
+		}
+		if (!got) return;
+		if (got === 1 || !depthOcc.tex[1]) {
+			U.uDepthR.value = U.uDepthL.value;
+			U.uNormR.value.copy(U.uNormL.value);
+			U.uVpR.value.copy(U.uVpL.value);
+			U.uRaw.value.y = U.uRaw.value.x;
+		}
+		U.uTwo.value = got > 1 ? 1 : 0;
+		U.uFmt.value = fmt;
+		U.uOn.value = 1;
+	}
 	const losRay = new Raycaster(),
 		losFrom = new Vector3(),
 		losDir = new Vector3(),
@@ -7062,6 +7203,8 @@ Content-Type: audio/wav\r
 	}
 	function setArMode(e) {
 		((arMode = !!e),
+			(depthOcc.uniforms.uOn.value = 0),
+			(depthOcc.notified = !1),
 			(arShadowPlane.visible = arMode),
 			resetRoomScan(),
 			document.body.classList.toggle("ar-on", arMode),
@@ -7146,7 +7289,12 @@ Content-Type: audio/wav\r
 					"eye-tracking",
 					"plane-detection",
 					"mesh-detection",
+					"depth-sensing",
 				],
+				depthSensing: {
+					usagePreference: ["cpu-optimized", "gpu-optimized"],
+					dataFormatPreference: ["luminance-alpha", "float32"],
+				},
 			});
 			return (
 				renderer.xr.setFramebufferScaleFactor(1),
@@ -10133,7 +10281,7 @@ Their emoji message to you: ` +
 				s = renderer.xr.isPresenting;
 			if (arMode)
 				try {
-					(updateScanPlanes(t), updateScanMeshes(t), updateArShadow(n));
+					(updateScanPlanes(t), updateScanMeshes(t), updateArShadow(n), t && updateDepthOcclusion(t));
 				} catch (i) {
 					startMainLoop.w || ((startMainLoop.w = 1), console.warn("[ar room]", i));
 				}
