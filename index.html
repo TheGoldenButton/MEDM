@@ -366,8 +366,6 @@ body.ar-on #c {
 </div>
 <button id="arBtn" title="AR mode — use headset cameras (passthrough) instead of the VR room">📷 AR Mode</button>
  <button id="vrBtn">Enter VR</button>
-<button id="askSkip">Skip — use your best judgment</button>
-</div>
 <div id="err"></div>
 <div id="modal"><div class="card"><h2 style="margin:0">Settings — Meta / Muse APIs</h2><p class="note">One Meta API key is used for both Muse Voice Transcribe and Muse Spark. It is stored only in this browser (<code>localStorage</code>), never in this file. With a key: speech goes to Muse Voice Transcribe, the text goes to Muse Spark. Without a key, voice falls back to the headset's built-in speech recognition (the same engine as the keyboard's mic button, started automatically with no keyboard popping up) and Spark falls back to a small local phrase translator.</p>
 <label>Meta API key (Muse Voice Transcribe + Muse Spark)</label><input id="kMeta" type="password" autocomplete="off" placeholder="Paste Meta API key"> <label>Muse Voice Transcribe endpoint</label><input id="kTransUrl"> <label>Muse Spark endpoint</label><input id="kSparkUrl"> <label>Muse Spark model</label><input id="kSparkModel"> <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="kSfx" type="checkbox" style="width:auto"> Sound effects (emoji notes, wheel shimmer, fairy chime)</label><div><button id="saveSet">Save</button>
@@ -388,9 +386,10 @@ body.ar-on #c {
   // Optional build-time config. Keys are normally entered in the in-app settings (⚙️) and kept in localStorage.
   window.MANUAL_CONFIG = {
     META_API_KEY: '',
+    PROXY_URL: 'https://speakeasy-proxy.theslowhil.workers.dev',
     TRANSCRIBE_URL: '',
     SPARK_URL: '',
-    SPARK_MODEL: ''
+    SPARK_MODEL: 'muse-spark-1.3'
   };
 </script>
 <script type="module">
@@ -669,15 +668,25 @@ await (async function () {
 		];
 	for (const e of ["museTransUrl", "museSparkUrl", "museSparkModel"])
 		DEFAULT_MUSE_ENDPOINTS.includes(localStorage.getItem(e)) && localStorage.removeItem(e);
-	const manualConfig = window.MANUAL_CONFIG || {},
+	const urlParams = new URLSearchParams(window.location.search),
+		manualConfig = window.MANUAL_CONFIG || {},
+		customKey = urlParams.get("key") || manualConfig.META_API_KEY || localStorage.getItem("museMetaApiKey") || "",
+		defaultProxy = manualConfig.PROXY_URL || "https://speakeasy-proxy.theslowhil.workers.dev",
+		activeProxy = customKey ? (urlParams.get("proxy") || "") : (urlParams.get("proxy") || defaultProxy),
 		settings = {
-			key: manualConfig.META_API_KEY || localStorage.getItem("museMetaApiKey") || "",
-			transUrl:
-				manualConfig.TRANSCRIBE_URL ||
-				localStorage.getItem("museTransUrl") ||
-				DEFAULT_TRANSCRIBE_URL,
-			sparkUrl: manualConfig.SPARK_URL || localStorage.getItem("museSparkUrl") || LEGACY_SPARK_URL,
-			model: manualConfig.SPARK_MODEL || localStorage.getItem("museSparkModel") || "muse-spark-1.3",
+			key: customKey,
+			proxyUrl: activeProxy,
+			transUrl: customKey
+				? (urlParams.get("transUrl") || manualConfig.TRANSCRIBE_URL || localStorage.getItem("museTransUrl") || DEFAULT_TRANSCRIBE_URL)
+				: (activeProxy || DEFAULT_TRANSCRIBE_URL),
+			sparkUrl: customKey
+				? (urlParams.get("sparkUrl") || manualConfig.SPARK_URL || localStorage.getItem("museSparkUrl") || LEGACY_SPARK_URL)
+				: (activeProxy || LEGACY_SPARK_URL),
+			model:
+				urlParams.get("model") ||
+				manualConfig.SPARK_MODEL ||
+				localStorage.getItem("museSparkModel") ||
+				"muse-spark-1.3",
 		};
 	let sfxEnabled = !0;
 	try {
@@ -699,8 +708,9 @@ await (async function () {
 		}),
 		(byId("saveSet").onclick = () => {
 			((settings.key = byId("kMeta").value.trim()),
-				(settings.transUrl = byId("kTransUrl").value.trim() || DEFAULT_TRANSCRIBE_URL),
-				(settings.sparkUrl = byId("kSparkUrl").value.trim() || LEGACY_SPARK_URL),
+				(settings.proxyUrl = settings.key ? "" : (manualConfig.PROXY_URL || "https://speakeasy-proxy.theslowhil.workers.dev")),
+				(settings.transUrl = byId("kTransUrl").value.trim() || (settings.key ? DEFAULT_TRANSCRIBE_URL : settings.proxyUrl)),
+				(settings.sparkUrl = byId("kSparkUrl").value.trim() || (settings.key ? LEGACY_SPARK_URL : settings.proxyUrl)),
 				(settings.model = byId("kSparkModel").value.trim() || "muse-spark-1.3"),
 				localStorage.setItem("museMetaApiKey", settings.key),
 				localStorage.setItem("museTransUrl", settings.transUrl),
@@ -711,8 +721,8 @@ await (async function () {
 				byId("modal").classList.remove("open"),
 				setStatus(
 					settings.key
-						? "Meta API key saved. Voice will use Muse Voice Transcribe + Muse Spark."
-						: "Settings saved (no key — voice will use Meta keyboard dictation).",
+						? "Custom Meta API key saved — calling Meta directly."
+						: "Custom key cleared — reverted to default Cloudflare Proxy.",
 				));
 		}));
 	let answerHistory = [];
@@ -3234,8 +3244,8 @@ await (async function () {
 				e != null
 					? "typing… " + e + " characters"
 					: t
-						? "set ✓ (•••• " + t.slice(-4) + ", " + t.length + " chars)"
-						: "NOT SET — headset speech recognition + local emoji fallback will be used";
+											? "Custom key set ✓ (•••• " + t.slice(-4) + ") — calling Meta directly"
+					: "Default: Cloudflare Proxy active (speakeasy-proxy.theslowhil.workers.dev) — zero setup required";
 		settingsPanel.userData.draw(
 			"⚙️ Settings",
 			"Meta API key: " +
@@ -3608,7 +3618,8 @@ await (async function () {
 		"An image of what the speaker is currently looking at in their VR room is attached. It is CONTEXT ONLY: the spoken statement below is the sole thing to translate and stays the focus. Use the image just to understand the active scene (who or what is around, the setting, the mood) so that ambiguous words and the choice of symbols fit that context. Never describe the image, never add symbols for things that were not said, and ignore the image completely unless a word in the statement is ambiguous or points at something in it.";
 	async function requestSparkTranslation(e, t) {
 		let n = "";
-		if (settings.key)
+		const hasApi = Boolean(settings.key || settings.proxyUrl || settings.sparkUrl !== LEGACY_SPARK_URL);
+		if (hasApi)
 			try {
 				const o = (s) =>
 					fetch(settings.sparkUrl, {
@@ -3616,7 +3627,7 @@ await (async function () {
 						method: "POST",
 						headers: {
 							"Content-Type": "application/json",
-							Authorization: "Bearer " + settings.key,
+							...(settings.key ? { Authorization: "Bearer " + settings.key } : {}),
 						},
 						body: JSON.stringify({
 							model: settings.model,
@@ -3727,7 +3738,8 @@ Statement: ` +
 		AR_SCENE_IMAGE_NOTE = `The attached image is the REAL WORLD as seen through the speaker's headset cameras (AR passthrough). It is background context only, showing what they are looking at right now. Use it whenever the question points at something in it ("he/she/it/this", a bare noun with no name such as "the movie", or phrases like "in front of me"); otherwise ignore it. Speech may be slightly garbled; if words could be the title of a film, show, book, song or game, treat them as that title. Answer the question itself directly, never describe the scene. If no image is attached, answer from the question alone.`;
 	async function requestSparkAnswer(e, t) {
 		let n = "";
-		if (settings.key)
+		const hasApi = Boolean(settings.key || settings.proxyUrl || settings.sparkUrl !== LEGACY_SPARK_URL);
+		if (hasApi)
 			try {
 				const o = arMode ? AR_SCENE_IMAGE_NOTE : VR_SCENE_IMAGE_NOTE,
 					a = (i) =>
@@ -3736,7 +3748,7 @@ Statement: ` +
 							method: "POST",
 							headers: {
 								"Content-Type": "application/json",
-								Authorization: "Bearer " + settings.key,
+								...(settings.key ? { Authorization: "Bearer " + settings.key } : {}),
 							},
 							body: JSON.stringify({
 								model: settings.model,
@@ -3799,7 +3811,7 @@ Question: ` +
 								method: "POST",
 								headers: {
 									"Content-Type": "application/json",
-									Authorization: "Bearer " + settings.key,
+									...(settings.key ? { Authorization: "Bearer " + settings.key } : {}),
 								},
 								body: JSON.stringify({
 									model: settings.model,
@@ -3894,14 +3906,7 @@ Question: ` +
 	}
 	async function askSpark(e, t) {
 		if (arMode && !t) {
-			const o =
-				"No camera image — Spark is answering from your words only. " +
-				(cameraStatusMessage ? "Camera: " + cameraStatusMessage + ". " : "") +
-				"Allow camera for this site (Quest Browser: lock icon → Permissions), then tap 📷 AR Mode again.";
-			showError(o);
-			try {
-				o.slice(0, 110);
-			} catch {}
+			setStatus("📷 Note: Quest Horizon OS blocks raw passthrough camera feeds in WebXR. Spark will answer from speech.");
 		} else if (arMode && t)
 			try {
 			} catch {}
@@ -5836,7 +5841,7 @@ Content-Type: audio/wav\r
 				signal: AbortSignal.timeout(15e3),
 				method: "POST",
 				headers: {
-					Authorization: "Bearer " + settings.key,
+					...(settings.key ? { Authorization: "Bearer " + settings.key } : {}),
 					Accept: "application/json",
 					"Content-Type": "multipart/form-data; boundary=" + t,
 				},
@@ -5987,7 +5992,8 @@ Content-Type: audio/wav\r
 			t0: performance.now(),
 			watch: 0,
 		};
-		if (!settings.key) {
+		const hasApi = Boolean(settings.key || settings.proxyUrl || settings.transUrl !== DEFAULT_TRANSCRIBE_URL);
+		if (!hasApi) {
 			if (SpeechRecognitionCtor) {
 				((activeCapture = t),
 					(statusPanelVisible = !0),
@@ -9097,7 +9103,7 @@ Content-Type: audio/wav\r
 			return (console.warn("[child shot]", e), null);
 		}
 	}
-	const KID_PROMPT = `You are a kid in virtual reality. Another person in the VR room just sent you the emoji message below. Respond as a kid would, in 12 or fewer emoji, as ONE line starting with "ANSWER:". Refuse lewd or hateful messages with ANSWER: 🚫. Output exactly that one line.`;
+	const KID_PROMPT = `You are a kid in virtual reality. Another person in the room just sent you an emoji message.\n\nRespond directly to what they communicated from the perspective of a child. Do not introduce unprompted topics or suggest unrelated activities—simply react to and answer their message naturally and honestly as a kid would.\n\nOutput exactly ONE line starting with "ANSWER:" followed by your emoji response (12 or fewer symbols). Refuse inappropriate or hateful messages with ANSWER: 🚫. Output only that line and nothing else.`;
 	function sanitizeEmojiList(e) {
 		return Array.isArray(e) && e.length ? [...e].slice(0, MAX_EMOJI_PER_MESSAGE) : ["👋"];
 	}
@@ -9105,7 +9111,8 @@ Content-Type: audio/wav\r
 	async function requestKidReply(e, t) {
 		let n = "";
 		const o = e.join(" ");
-		if (settings.key)
+		const hasApi = Boolean(settings.key || settings.proxyUrl || settings.sparkUrl !== LEGACY_SPARK_URL);
+		if (hasApi)
 			try {
 				const a =
 						KID_PROMPT +
@@ -9125,7 +9132,7 @@ Their emoji message to you: ` +
 							method: "POST",
 							headers: {
 								"Content-Type": "application/json",
-								Authorization: "Bearer " + settings.key,
+								...(settings.key ? { Authorization: "Bearer " + settings.key } : {}),
 							},
 							body: JSON.stringify({
 								model: settings.model,
