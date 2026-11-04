@@ -859,23 +859,8 @@ await (async function () {
 		scene.add(playerRig),
 		playerRig.add(camera),
 		camera.position.set(0, 1.6, 0),
-		scene.add(new THREE.HemisphereLight(16777215, 13421772, 0.75)));
+		void 0);
 	const ceilingLights = [];
-	for (const e of [-2.5, 2.5]) {
-		const t = new THREE.SpotLight(16777215, 1.1, 0, Math.PI / 2.6, 0.7, 0);
-		(t.position.set(e, 3.9, 0),
-			t.target.position.set(0.6 * e, 0, 0),
-			scene.add(t, t.target),
-			ceilingLights.push(t),
-			(t.userData.x = e),
-			(t.castShadow = !0),
-			t.shadow.mapSize.set(2048, 2048),
-			(t.shadow.camera.near = 0.5),
-			(t.shadow.camera.far = 8),
-			(t.shadow.bias = -4e-4),
-			(t.shadow.normalBias = 0.02),
-			(t.shadow.radius = 4));
-	}
 	new THREE.PMREMGenerator(renderer);
 	const arShadowPlane = new Mesh(
 		new PlaneGeometry(14, 14),
@@ -1017,6 +1002,7 @@ await (async function () {
 		engineMesh: null,
 		trim: null,
 		space: null,
+		sun: null,
 		raft: null,
 	};
 	{
@@ -1254,6 +1240,55 @@ await (async function () {
 				o: M,
 				spin: 0.035,
 			}));
+		{
+			// Sun: true angular size (~0.53 deg), placed "at infinity" (follows the camera, parallel rays)
+			const SUN_DIST = 45,
+				sunDir = new Vector3(0.45, 0.55, 0.7).normalize(),
+				sunR = SUN_DIST * Math.tan((0.53 * Math.PI) / 360),
+				sunGroup = new Group(),
+				sunCore = new Mesh(
+					new SphereGeometry(sunR, 24, 16),
+					new MeshBasicMaterial({ color: 16775400, fog: !1 }),
+				),
+				mkGlow = (hex, scale, op) => {
+					const g = new Sprite(
+						new SpriteMaterial({
+							map: t([
+								[0, "rgba(255,255,255,1)"],
+								[0.2, "rgba(255,255,255,.5)"],
+								[1, "rgba(255,255,255,0)"],
+							]),
+							color: hex,
+							transparent: !0,
+							opacity: op,
+							blending: AdditiveBlending,
+							depthWrite: !1,
+							fog: !1,
+						}),
+					);
+					return ((g.userData.base = scale), g.scale.setScalar(scale), g);
+				},
+				glowInner = mkGlow(16774848, 3.2, 0.95),
+				glowOuter = mkGlow(16764000, 9, 0.3),
+				sunLight = new THREE.DirectionalLight(16774880, 5);
+			sunGroup.add(sunCore, glowInner, glowOuter);
+			scene.add(sunGroup);
+			sunLight.castShadow = !0;
+			sunLight.shadow.mapSize.set(2048, 2048);
+			const sc = sunLight.shadow.camera;
+			((sc.left = sc.bottom = -8), (sc.right = sc.top = 8), (sc.near = 1), (sc.far = 90));
+			((sunLight.shadow.bias = -4e-4), (sunLight.shadow.normalBias = 0.02), (sunLight.shadow.radius = 3));
+			scene.add(sunLight, sunLight.target);
+			sunLight.position.copy(sunDir).multiplyScalar(40);
+			// Bounce light: sunlight reflecting off the platform back up onto the kid/objects.
+			// Strength = sun intensity x sun elevation x floor albedo x coverage; colour = sunlit floor colour.
+			const floorCol = new THREE.Color(14474458),
+				bounceCol = floorCol.clone().multiply(new THREE.Color(16774880)),
+				albedo = (floorCol.r + floorCol.g + floorCol.b) / 3,
+				bounce = new THREE.HemisphereLight(1584712, bounceCol, 5 * sunDir.y * albedo * 0.75);
+			scene.add(bounce);
+			spaceBackdrop.sun = { glowInner, glowOuter, group: sunGroup, light: sunLight, dir: sunDir, dist: SUN_DIST, bounce };
+		}
 	}
 	function updateSpaceBackdrop(e, t) {
 		if (!spaceBackdrop.space) return;
@@ -1261,11 +1296,19 @@ await (async function () {
 		if (
 			((spaceBackdrop.space.visible = n),
 			spaceBackdrop.raft && (spaceBackdrop.raft.visible = n),
+			spaceBackdrop.sun && ((spaceBackdrop.sun.group.visible = n), (spaceBackdrop.sun.bounce.visible = n)),
 			!(!n || !e))
 		) {
 			for (const o of spaceBackdrop.layers)
 				((o.o.rotation.y += o.rot * e), (o.mat.opacity = 0.82 + 0.16 * Math.sin(t * 0.7 + o.ph)));
 			for (const o of spaceBackdrop.planets) o.o.rotation.y += o.spin * e;
+			if (spaceBackdrop.sun) {
+				const u = spaceBackdrop.sun;
+				(getWorldPosition(camera, u.group.position),
+					u.group.position.addScaledVector(u.dir, u.dist),
+					u.glowInner.scale.setScalar(u.glowInner.userData.base * (1 + 0.04 * Math.sin(t * 1.3))),
+					u.glowOuter.scale.setScalar(u.glowOuter.userData.base * (1 + 0.06 * Math.sin(t * 0.8 + 1))));
+			}
 			(spaceBackdrop.engine &&
 				(spaceBackdrop.engine.opacity = 0.62 + 0.3 * (0.5 + 0.5 * Math.sin(t * 7))),
 				spaceBackdrop.engineMesh &&
@@ -4373,10 +4416,12 @@ Question: ` +
 	}
 	function updateArShadow(e) {
 		(getWorldPosition(camera, headPos), arShadowPlane.position.set(headPos.x, 0.002, headPos.z));
-		for (const t of ceilingLights)
-			(t.position.set(headPos.x + t.userData.x, roomBounds.h - 0.1, headPos.z),
-				t.target.position.set(headPos.x + 0.6 * t.userData.x, 0, headPos.z),
-				t.target.updateMatrixWorld());
+		if (spaceBackdrop.sun) {
+			const u = spaceBackdrop.sun;
+			(u.light.target.position.set(headPos.x, 0, headPos.z),
+				u.light.position.copy(u.light.target.position).addScaledVector(u.dir, 40),
+				u.light.target.updateMatrixWorld());
+		}
 		!kidPositioned || (roomScanFound && !yr)
 			? Hh()
 			: (clampToRoomPlanes(kidAvatar.position, 0.45), keepInLineOfSight(kidAvatar.position, 0.9, 0.5),
