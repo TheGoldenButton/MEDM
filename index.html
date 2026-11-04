@@ -806,6 +806,7 @@ await (async function () {
 				{
 					antialias: !0,
 					alpha: !0,
+					powerPreference: "high-performance",
 				},
 				{
 					antialias: !1,
@@ -847,13 +848,15 @@ await (async function () {
 	let arMode = !1,
 		currentXRFrame = null,
 		arCameraStream = null;
-	(renderer.setPixelRatio(Math.min(devicePixelRatio, 2)),
+	(renderer.setPixelRatio(devicePixelRatio || 1),
 		renderer.setSize(innerWidth, innerHeight),
 		(renderer.shadowMap.enabled = !0),
+		(renderer.shadowMap.type = THREE.PCFSoftShadowMap),
+		(renderer.outputColorSpace = SRGBColorSpace),
 		(renderer.xr.enabled = !0));
 	const scene = new THREE.Scene();
 	((scene.background = new Color(263956)), (scene.fog = new Fog(263956, 16, 55)));
-	const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 60),
+	const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 150),
 		playerRig = new Group();
 	(playerRig.position.set(0, 0, -1.9),
 		scene.add(playerRig),
@@ -937,8 +940,8 @@ await (async function () {
 		}
 	}
 	const mirror = new Reflector(new PlaneGeometry(2.4, 2.6), {
-		textureWidth: 1536,
-		textureHeight: 1536,
+		textureWidth: 2048,
+		textureHeight: 2048,
 		color: 13621468,
 	});
 	(mirror.position.set(0, 1.55, -4.94), scene.add(mirror), roomSurfaces.push(mirror));
@@ -1241,13 +1244,13 @@ await (async function () {
 				spin: 0.035,
 			}));
 		{
-			// Sun: true angular size (~0.53 deg), placed "at infinity" (follows the camera, parallel rays)
+			// Sun: true angular size (~0.53 deg) at SUN_DIST, fixed in world space (never follows the camera)
 			const SUN_DIST = 45,
 				sunDir = new Vector3(0.48, 0.44, 0.76).normalize(),
 				sunR = SUN_DIST * Math.tan((0.53 * Math.PI) / 360),
 				sunGroup = new Group(),
 				sunCore = new Mesh(
-					new SphereGeometry(sunR, 24, 16),
+					new SphereGeometry(sunR, 48, 32),
 					new MeshBasicMaterial({ color: 16776160, fog: !1 }),
 				),
 				mkGlow = (hex, scale, op) => {
@@ -1272,9 +1275,10 @@ await (async function () {
 				glowOuter = mkGlow(16756832, 9, 0.3),
 				sunLight = new THREE.DirectionalLight(16773328, 6);
 			sunGroup.add(sunCore, glowInner, glowOuter);
+			sunGroup.position.copy(sunDir).multiplyScalar(SUN_DIST);
 			scene.add(sunGroup);
 			sunLight.castShadow = !0;
-			sunLight.shadow.mapSize.set(2048, 2048);
+			sunLight.shadow.mapSize.set(4096, 4096);
 			const sc = sunLight.shadow.camera;
 			((sc.left = sc.bottom = -6.5), (sc.right = sc.top = 6.5), (sc.near = 1), (sc.far = 90));
 			((sunLight.shadow.bias = -4e-4), (sunLight.shadow.normalBias = 0.02), (sunLight.shadow.radius = 3));
@@ -1304,9 +1308,7 @@ await (async function () {
 			for (const o of spaceBackdrop.planets) o.o.rotation.y += o.spin * e;
 			if (spaceBackdrop.sun) {
 				const u = spaceBackdrop.sun;
-				(getWorldPosition(camera, u.group.position),
-					u.group.position.addScaledVector(u.dir, u.dist),
-					u.glowInner.scale.setScalar(u.glowInner.userData.base * (1 + 0.04 * Math.sin(t * 1.3))),
+				(u.glowInner.scale.setScalar(u.glowInner.userData.base * (1 + 0.04 * Math.sin(t * 1.3))),
 					u.glowOuter.scale.setScalar(u.glowOuter.userData.base * (1 + 0.06 * Math.sin(t * 0.8 + 1))));
 			}
 			(spaceBackdrop.engine &&
@@ -7379,8 +7381,8 @@ Content-Type: audio/wav\r
 				},
 			});
 			return (
-				renderer.xr.setFramebufferScaleFactor(1),
-				renderer.xr.setFoveation(1),
+				renderer.xr.setFramebufferScaleFactor(1.5),
+				renderer.xr.setFoveation(0),
 				(xrSessionMode = t),
 				o.addEventListener("end", () => {
 					((xrSessionMode = null),
