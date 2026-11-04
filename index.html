@@ -1243,12 +1243,12 @@ await (async function () {
 		{
 			// Sun: true angular size (~0.53 deg), placed "at infinity" (follows the camera, parallel rays)
 			const SUN_DIST = 45,
-				sunDir = new Vector3(0.45, 0.55, 0.7).normalize(),
+				sunDir = new Vector3(0.48, 0.44, 0.76).normalize(),
 				sunR = SUN_DIST * Math.tan((0.53 * Math.PI) / 360),
 				sunGroup = new Group(),
 				sunCore = new Mesh(
 					new SphereGeometry(sunR, 24, 16),
-					new MeshBasicMaterial({ color: 16775400, fog: !1 }),
+					new MeshBasicMaterial({ color: 16776160, fog: !1 }),
 				),
 				mkGlow = (hex, scale, op) => {
 					const g = new Sprite(
@@ -1269,14 +1269,14 @@ await (async function () {
 					return ((g.userData.base = scale), g.scale.setScalar(scale), g);
 				},
 				glowInner = mkGlow(16774848, 3.2, 0.95),
-				glowOuter = mkGlow(16764000, 9, 0.3),
-				sunLight = new THREE.DirectionalLight(16774880, 5);
+				glowOuter = mkGlow(16756832, 9, 0.3),
+				sunLight = new THREE.DirectionalLight(16773328, 6);
 			sunGroup.add(sunCore, glowInner, glowOuter);
 			scene.add(sunGroup);
 			sunLight.castShadow = !0;
 			sunLight.shadow.mapSize.set(2048, 2048);
 			const sc = sunLight.shadow.camera;
-			((sc.left = sc.bottom = -8), (sc.right = sc.top = 8), (sc.near = 1), (sc.far = 90));
+			((sc.left = sc.bottom = -6.5), (sc.right = sc.top = 6.5), (sc.near = 1), (sc.far = 90));
 			((sunLight.shadow.bias = -4e-4), (sunLight.shadow.normalBias = 0.02), (sunLight.shadow.radius = 3));
 			scene.add(sunLight, sunLight.target);
 			sunLight.position.copy(sunDir).multiplyScalar(40);
@@ -1285,7 +1285,7 @@ await (async function () {
 			const floorCol = new THREE.Color(14474458),
 				bounceCol = floorCol.clone().multiply(new THREE.Color(16774880)),
 				albedo = (floorCol.r + floorCol.g + floorCol.b) / 3,
-				bounce = new THREE.HemisphereLight(1584712, bounceCol, 5 * sunDir.y * albedo * 0.75);
+				bounce = new THREE.HemisphereLight(3166348, bounceCol, 6 * sunDir.y * albedo * 0.9);
 			scene.add(bounce);
 			spaceBackdrop.sun = { glowInner, glowOuter, group: sunGroup, light: sunLight, dir: sunDir, dist: SUN_DIST, bounce };
 		}
