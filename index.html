@@ -4798,6 +4798,130 @@ Question: ` +
 			e.copy(sparkOrbHomePos)
 		);
 	}
+
+	function playSparkAppear() {
+		try {
+			const a = getAudioContext();
+			if (!a) return;
+			const t = a.currentTime, o = a.createOscillator(), g = a.createGain(),
+				f = a.createBiquadFilter();
+			f.type = "lowpass";
+			f.frequency.value = 2400;
+			o.type = "sine";
+			const pv = 0.85 + 0.3 * Math.random();
+			o.frequency.setValueAtTime(500 * pv, t);
+			o.frequency.exponentialRampToValueAtTime(1100 * pv, t + 0.3);
+			g.gain.setValueAtTime(1e-4, t);
+			g.gain.exponentialRampToValueAtTime(0.009, t + 0.15);
+			g.gain.exponentialRampToValueAtTime(1e-4, t + 0.38);
+			o.connect(g); g.connect(f); f.connect(a.destination);
+			o.start(t); o.stop(t + 0.42);
+		} catch {}
+	}
+	function playSparkPop() {
+		try {
+			const a = getAudioContext();
+			if (!a) return;
+			const t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+			o.type = "sine";
+			o.frequency.setValueAtTime(900, t);
+			o.frequency.exponentialRampToValueAtTime(300, t + 0.12);
+			g.gain.setValueAtTime(0.05, t);
+			g.gain.exponentialRampToValueAtTime(1e-4, t + 0.16);
+			o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.18);
+		} catch {}
+	}
+	let sparkNoiseBuf = null;
+	function playSparkThinkBlip() {
+		try {
+			const a = getAudioContext();
+			if (!a) return;
+			if (!sparkNoiseBuf || sparkNoiseBuf.sampleRate !== a.sampleRate) {
+				sparkNoiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate);
+				const d = sparkNoiseBuf.getChannelData(0);
+				for (let i = 0; i < d.length; i++) d[i] = 2 * Math.random() - 1;
+			}
+			const t = a.currentTime, r = Math.random,
+				kind = r(),
+				vol = 0.4 + 1.2 * r() * r(), // mostly soft, occasionally stronger
+				span = 0.08 + 0.3 * r(),
+				fc = 1800 + 6000 * r(),
+				pan = a.createStereoPanner ? a.createStereoPanner() : null;
+			let out = a.destination;
+			if (pan) {
+				pan.pan.value = 2 * r() - 1;
+				pan.connect(a.destination);
+				out = pan;
+			}
+			// crackle: random count, spacing, pitch and length (sometimes none)
+			const n = kind < 0.12 ? 0 : kind < 0.35 ? 1 + Math.floor(2 * r()) : 2 + Math.floor(8 * r());
+			for (let i = 0; i < n; i++) {
+				const w = t + r() * r() * span * 1.6, d = 0.004 + 0.035 * r() * r(),
+					src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain();
+				src.buffer = sparkNoiseBuf;
+				bp.type = r() < 0.25 ? "highpass" : "bandpass";
+				bp.frequency.value = fc * (0.5 + r());
+				bp.Q.value = 0.5 + 2 * r();
+				g.gain.setValueAtTime((0.008 + 0.025 * r()) * vol, w);
+				g.gain.exponentialRampToValueAtTime(1e-4, w + d);
+				src.connect(bp); bp.connect(g); g.connect(out);
+				src.start(w, r() * 0.5, d + 0.01);
+			}
+			// buzz: only sometimes, with random pitch, wave and length
+			if (r() < 0.55) {
+				const bl = 0.08 + 0.35 * r(), bo = a.createOscillator(), bg = a.createGain(),
+					bf = a.createBiquadFilter();
+				bo.type = r() < 0.6 ? "sawtooth" : "square";
+				bo.frequency.value = 70 + 160 * r();
+				bo.frequency.linearRampToValueAtTime(bo.frequency.value * (0.8 + 0.5 * r()), t + bl);
+				bf.type = "lowpass";
+				bf.frequency.value = 500 + 1200 * r();
+				bg.gain.setValueAtTime(1e-4, t);
+				bg.gain.exponentialRampToValueAtTime(0.0045 * vol, t + 0.02 + 0.04 * r());
+				bg.gain.exponentialRampToValueAtTime(1e-4, t + bl);
+				bo.connect(bf); bf.connect(bg); bg.connect(out);
+				bo.start(t); bo.stop(t + bl + 0.02);
+			}
+			// zap: rarer, random direction, speed and tone; sometimes a double zap
+			if (r() < 0.4) {
+				const zaps = r() < 0.25 ? 2 : 1;
+				for (let k = 0; k < zaps; k++) {
+					const w = t + 0.03 + k * (0.06 + 0.08 * r()) + 0.15 * r(),
+						dur = 0.05 + 0.12 * r(),
+						hi = 1800 + 2800 * r(), lo = 150 + 250 * r(),
+						up = r() < 0.3,
+						zo = a.createOscillator(), zg = a.createGain(), zf = a.createBiquadFilter();
+					zo.type = r() < 0.7 ? "sawtooth" : "square";
+					zo.frequency.setValueAtTime(up ? lo : hi, w);
+					zo.frequency.exponentialRampToValueAtTime(up ? hi : lo, w + dur);
+					zf.type = "bandpass";
+					zf.frequency.value = 1200 + 1800 * r();
+					zf.Q.value = 0.8 + 1.5 * r();
+					zg.gain.setValueAtTime(0.011 * vol, w);
+					zg.gain.exponentialRampToValueAtTime(1e-4, w + dur + 0.02);
+					zo.connect(zf); zf.connect(zg); zg.connect(out);
+					zo.start(w); zo.stop(w + dur + 0.04);
+				}
+			}
+		} catch {}
+	}
+	let sparkThinkTimer = null;
+	function startSparkThinkSound() {
+		if (sparkThinkTimer) return;
+		const tick = () => {
+			if (spark.mode !== "orbthink") {
+				sparkThinkTimer = null;
+				return;
+			}
+			playSparkThinkBlip();
+			const q = Math.random();
+			sparkThinkTimer = setTimeout(
+				tick,
+				q < 0.2 ? 70 + 120 * Math.random() : q < 0.85 ? 200 + 400 * Math.random() : 700 + 900 * Math.random(),
+			);
+		};
+		sparkThinkTimer = setTimeout(tick, 200);
+	}
 	function beginSparkSession() {
 		const e = spark.mode;
 		e !== "orb" &&
@@ -4813,14 +4937,17 @@ Question: ` +
 			sparkOrb.scale.setScalar(0.001),
 			(sparkOrb.visible = !0),
 			(spark.mode = "orb"),
-			(spark.t0 = performance.now()));
+			(spark.t0 = performance.now()),
+			playSparkAppear());
 	}
 	function sparkMarkThinking() {
 		(spark.mode === "hidden" && beginSparkSession(),
-			spark.mode === "orb" && (spark.mode = "orbthink"));
+			spark.mode === "orb" && (spark.mode = "orbthink"),
+			spark.mode === "orbthink" && startSparkThinkSound());
 	}
 	function $h() {
 		playFairyChime();
+		playSparkPop();
 		{
 			(getWorldPosition(camera, cameraPos),
 				camera.getWorldDirection(arCamForward),
@@ -5167,7 +5294,8 @@ Question: ` +
 			ln = sparkOrbPoints.material.color.clone(),
 			Dn = new Color(12575999),
 			Cn = ballPointLight.color.clone(),
-			mt = new Color(10473727);
+			mt = new Color(10473727),
+			rbw = new Color();
 		function Rt() {
 			((u.T = 900 + 700 * s()),
 				(h.T = u.T),
@@ -5827,6 +5955,17 @@ Question: ` +
 								(Re.material.opacity = Math.min(1, h.el * (0.2 + 0.5 * s() + 0.8 * h.kick))));
 					}
 					const se = h.el;
+					if (m === "orbthink") {
+						const rh = ((C / 2600) % 1 + 1) % 1;
+						ct.setHSL(rh, 1, 0.78);
+						et.setHSL((rh + 0.08) % 1, 1, 0.66);
+						Dn.setHSL((rh + 0.16) % 1, 1, 0.74);
+						mt.setHSL((rh + 0.04) % 1, 1, 0.62);
+						u.arc = rbw.setHSL((rh + 0.5) % 1, 1, 0.7).getHex();
+						P.color.setHSL((rh + 0.25) % 1, 1, 0.8);
+						O.material.color.setHSL(rh, 1, 0.7);
+						for (let we = 0; we < 9; we++) z[we].material.color.setHSL((rh + we * 0.11) % 1, 1, 0.72);
+					}
 					(sparkOrbInner.material.color.copy(Le).lerp(ct, se),
 						sparkOrbCore.material.color.copy(Ve).lerp(et, se),
 						sparkOrbPoints.material.color.copy(ln).lerp(Dn, se),
